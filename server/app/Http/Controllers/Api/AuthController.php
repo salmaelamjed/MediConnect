@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -283,36 +284,34 @@ class AuthController extends Controller
             'token' => $token,
         ], 200);
     }
+
     /**
      * Logout the authenticated user
      */
-   /**
- * Logout the authenticated user
- */
-public function logout(Request $request)
-{
-    try {
-        // Get the authenticated user
-        $user = Auth::user();
+    public function logout(Request $request)
+    {
+        try {
+            // Get the authenticated user
+            $user = Auth::user();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not authenticated',
+                ], 401);
+            }
+
+            // Invalidate the current token
+            $request->user()->currentAccessToken()->delete();
+
             return response()->json([
-                'message' => 'User not authenticated',
-            ], 401);
+                'message' => 'Logout successful',
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Logout failed',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        // Invalidate the current token
-        $request->user()->currentAccessToken()->delete();
-
-        return response()->json([
-            'message' => 'Logout successful',
-        ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Logout failed',
-            'error' => $e->getMessage(),
-        ], 500);
     }
-}
 }

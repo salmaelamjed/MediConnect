@@ -9,7 +9,6 @@ use Laravel\Sanctum\HasApiTokens;
 
 class Patient extends Model
 {
-   use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'user_id',
