@@ -27,4 +27,5 @@ Route::prefix('password-reset')->group(function () {
         ->name('password.reset.validate');
     Route::post('/change-password', [PasswordResetController::class, 'changePassword'])
         ->name('password.reset.change');
+    Route::post('/resend-code', [PasswordResetController::class, 'resendPasswordCode']);
 });

@@ -70,6 +70,82 @@ class PasswordResetController extends Controller
         }
     }
 
+
+/**
+ * Resend password reset code to user's email
+ */
+        public function resendPasswordCode(Request $request)
+        {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email|exists:users,email',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            try {
+                $user = User::where('email', $request->email)->first();
+
+                // Vérifier s'il existe déjà un code de réinitialisation récent
+                $existingReset = DB::table('password_reset_tokens')
+                    ->where('email', $user->email)
+                    ->first();
+
+                // Vérifier la limite de temps pour le renvoi (exemple: 2 minutes minimum entre les envois)
+                if ($existingReset) {
+                    $lastSent = Carbon::parse($existingReset->created_at);
+                    $minWaitTime = 2; // minutes
+
+                    if (Carbon::now()->diffInMinutes($lastSent) < $minWaitTime) {
+                        $remainingTime = $minWaitTime - Carbon::now()->diffInMinutes($lastSent);
+                        return response()->json([
+                            'message' => "Veuillez attendre {$remainingTime} minute(s) avant de redemander un code.",
+                            'wait_time' => $remainingTime,
+                        ], 429); 
+                    }
+                }
+
+                // Générer un nouveau code numérique aléatoire de 6 chiffres
+                $resetCode = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+                $expiresAt = Carbon::now()->addMinutes(15); // Code expire dans 15 minutes
+
+                // Supprimer les codes de réinitialisation existants pour cet email
+                DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+
+                // Insérer le nouveau code de réinitialisation
+                DB::table('password_reset_tokens')->insert([
+                    'email' => $user->email,
+                    'token' => Hash::make($resetCode), // Hasher le code pour la sécurité
+                    'expires_at' => $expiresAt,
+                    'created_at' => now(),
+                ]);
+
+                // Envoyer l'email avec le nouveau code de réinitialisation
+                try {
+                    Log::info('Renvoi du code de réinitialisation à l\'email: ' . $user->email);
+                    Mail::to($user->email)->send(new ResetPassword($user->email, $resetCode));
+                    Log::info('Email de réinitialisation renvoyé avec succès');
+                } catch (\Exception $e) {
+                    Log::error('Échec du renvoi de l\'email: ' . $e->getMessage());
+                    throw new \Exception('Échec du renvoi de l\'email: ' . $e->getMessage());
+                }
+
+                return response()->json([
+                    'message' => 'Nouveau code de réinitialisation envoyé avec succès. Vérifiez votre email.',
+                    'expires_in_minutes' => 15,
+                ], 200);
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'Échec du renvoi du code de réinitialisation',
+                    'error' => $e->getMessage(),
+                ], 500);
+            }
+        }
+
     /**
      * Validate the reset code
      */
@@ -154,7 +230,7 @@ class PasswordResetController extends Controller
                 ], 400);
             }
 
-           
+
 
             // Vérifier si le code a expiré
             if (Carbon::now()->greaterThan(Carbon::parse($passwordReset->expires_at))) {

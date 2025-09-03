@@ -262,7 +262,7 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
-
+        $role=$user->role;
         // Check if email is verified
         if (!$user->email_verified_at) {
             return response()->json([
@@ -282,6 +282,7 @@ class AuthController extends Controller
             'message' => 'Login successful',
             'user' => $user->only(['id', 'email', 'role']),
             'token' => $token,
+             'role'=>$role,
         ], 200);
     }
 
@@ -291,7 +292,6 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            // Get the authenticated user
             $user = Auth::user();
 
             if (!$user) {
