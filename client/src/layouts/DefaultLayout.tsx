@@ -3,7 +3,15 @@ import Header from "../components/shared/Header";
 
 const DefaultLayout = () => {
   const location = useLocation();
-  const hideHeader = ["/login", "/register","/register_doctor","/send_otp","/verify_otp","/reset_password"].includes(location.pathname);
+  const hideHeader = [
+    "/login",
+     "/register",
+     "/register_doctor",
+     "/send_otp",
+     "/verify_otp",
+     "/reset_password",
+     "/profile",
+     "/email_verification"].includes(location.pathname);
 
   return (
     <div>

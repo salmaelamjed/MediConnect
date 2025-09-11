@@ -45,8 +45,8 @@ const LoginForm = ({
       toast.success("Login successful!");
 
       // Role-based redirection
-      if (role === "admin") navigate("/admin/dashboard");
-      else if (role === "doctor") navigate("/doctor/dashboard");
+    if (role === "admin") navigate("/admin");
+      else if (role === "doctor") navigate("/doctor");
       else navigate("/");
 
       reset();
