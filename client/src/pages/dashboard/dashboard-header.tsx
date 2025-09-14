@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Bell, Menu, Search, LogOut } from 'lucide-react'
+import { Bell, Menu, LogOut } from 'lucide-react'
 import { Link, useNavigate } from "react-router-dom"
 import logo from "@/assets/logo.svg"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,18 +60,9 @@ export function DashboardHeader({ toggleSidebar }: DashboardHeaderProps) {
         <Menu className="w-5 h-5" />
       </Button>
       <Link to={role==="doctor" ? "/doctor" : "/admin"} >
-        <img src={logo} alt="MediConnect" className="h-16"/>
+        <img src={logo} alt="MediConnect" className="h-16 "/>
       </Link>
       <div className="flex items-center gap-4 ml-auto">
-        <form className="relative hidden md:block">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="w-64 pl-8 rounded-lg bg-background"
-            aria-label="Search dashboard"
-          />
-        </form>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="relative rounded-full">

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react";
-import {  ChevronLeft, ChevronRight, CreditCard, Package, Settings, Users, Store, LayoutDashboard, User, Calendar, Stethoscope, Clock, BarChart3, CalendarPlus } from "lucide-react";
+import {  ChevronLeft, ChevronRight, CreditCard, Package, Settings, Store, LayoutDashboard, User, Calendar, Stethoscope, Clock, BarChart3, Users } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ const getNavItems = (role: "admin" | "doctor"): NavItem[] => {
     { title: "Planning", href: "/doctor/planning", icon: Calendar },
     { title: "Consultations", href: "/doctor/consultations", icon: Stethoscope },
     { title: "Waiting Room", href: "/doctor/waiting_room", icon: Clock },
-    { title: "Calendar", href: "/doctor/calendar", icon: CalendarPlus },
+    { title: "Staff List", href: "/doctor/staff_list", icon: Users },
     { title: "Reports", href: "/doctor/reports", icon: BarChart3 },
     { title: "Settings", href: "/doctor/settings", icon: Settings },
 

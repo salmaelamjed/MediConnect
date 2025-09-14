@@ -15,6 +15,7 @@ import PlanningPage from "@/pages/dashboard/doctor/planning-page";
 import ReportsPage from "@/pages/dashboard/doctor/reports-page";
 import Settings from "@/pages/dashboard/doctor/settings";
 import WaitingRoom from "@/pages/dashboard/doctor/waiting-room";
+import { StethoscopeIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
 import {  createBrowserRouter, RouterProvider } from "react-router-dom";
 
@@ -28,11 +29,24 @@ const PatientProfile=lazy(()=>import("@/pages/patient-profile"));
 const AdminLayout=lazy(()=>import("@/layouts/AdminLayout"));
 const MultiStepRegisterForm=lazy(()=>import("@/components/forms/signup-form"));
 const EmailVerificationModal=lazy(()=>import("@/components/forms/email-verification"))
+const StaffList=lazy(()=>import("@/pages/dashboard/doctor/staff-list"));
+
 // Custom Loading component
 const Loading = () => (
-  <div className="flex items-center justify-center h-screen">
-    <div className="w-16 h-16 border-t-4 border-blue-500 rounded-full animate-spin"></div>
-  </div>
+  <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="relative">
+        {/* Medical logo with loading animation */}
+        <div className="relative w-20 h-20">
+          {/* Rotating ring around logo */}
+          <div className="absolute inset-0 border-4 border-transparent rounded-full border-t-blue-400 animate-spin"></div>
+
+          {/* Medical logo in center */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <StethoscopeIcon className="w-10 h-10 text-primary animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
 );
 
 const router = createBrowserRouter([
@@ -89,6 +103,7 @@ const router = createBrowserRouter([
           { path: "planning", element: <PlanningPage /> },
           { path: "consultations", element: <ConsultationsPage /> },
           { path: "waiting_room", element: <WaitingRoom/> },
+          { path: "staff_list", element: <StaffList /> },
           { path: "calendar", element: <Calendar/> },
           { path: "reports", element: <ReportsPage/> },
           { path: "settings", element: <Settings /> },

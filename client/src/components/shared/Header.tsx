@@ -69,7 +69,7 @@ const handleLogout = () => {
           <img 
             src={logo} 
             alt="MediConnect" 
-            className="w-auto h-12 transition-all duration-300 md:h-10 lg:h-12"
+            className="w-auto h-16 transition-all duration-300 md:h-10 lg:h-16"
           />
         </Link>
 

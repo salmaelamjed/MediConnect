@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Patient;
 use App\Models\Doctor;
+use App\Services\NominatimService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -18,110 +19,133 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    /**
-     * Register a new user and send verification code
-     */
-    public function register(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:admin,doctor,patient',
-            'name' => $request->role === 'doctor' || $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'license_number' => $request->role === 'doctor' ? 'required|string|unique:doctors,license_number' : 'nullable|string',
-            'bio' => $request->role === 'doctor' ? 'nullable|string' : 'nullable|string',
-            'cabinet_name' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
-            'cabinet_address' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
-            'cabinet_city' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
-            'cabinet_postal_code' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
-            'latitude' => $request->role === 'doctor' ? 'required|numeric|between:-90,90' : 'nullable|numeric',
-            'longitude' => $request->role === 'doctor' ? 'required|numeric|between:-180,180' : 'nullable|numeric',
-            'consultation_fees' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
-            'date_of_birth' => $request->role === 'patient' ? 'required|date' : 'nullable|date',
-            'gender' => $request->role === 'patient' ? 'required|in:Female,Male' : 'nullable|in:Female,Male',
-            'address' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'city' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'code_postal' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'medical_history' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'allergies' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-        ]);
+protected $nominatimService;
 
-        if ($validator->fails()) {
-            return response()->json([
-                'errors' => $validator->errors(),
-            ], 422);
+public function __construct(NominatimService $nominatimService)
+{
+    $this->nominatimService = $nominatimService;
+}
+
+/**
+ * Register a new user and send verification code
+ */
+public function register(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email|unique:users,email',
+        'password' => 'required|min:8|confirmed',
+        'role' => 'required|in:admin,doctor,patient',
+        'name' => $request->role === 'doctor' || $request->role === 'patient' ? 'required|string' : 'nullable|string',
+        'specialite' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
+        'license_number' => $request->role === 'doctor' ? 'required|string|unique:doctors,license_number' : 'nullable|string',
+        'bio' => $request->role === 'doctor' ? 'nullable|string' : 'nullable|string',
+        'cabinet_name' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
+        'cabinet_address' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
+        'cabinet_city' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
+        'cabinet_postal_code' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
+        'heure_ouverture' => $request->role === 'doctor' ? 'required|date_format:H:i' : 'nullable',
+        'heure_fermeture' => $request->role === 'doctor' ? 'required|date_format:H:i' : 'nullable',
+        'jours_travail' => $request->role === 'doctor' ? 'required|array' : 'nullable',
+        'consultation_fees' => $request->role === 'doctor' ? 'required|string' : 'nullable|string',
+        'date_of_birth' => $request->role === 'patient' ? 'required|date' : 'nullable|date',
+        'gender' => $request->role === 'patient' ? 'required|in:Female,Male' : 'nullable|in:Female,Male',
+        'address' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
+        'city' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
+        'code_postal' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
+        'medical_history' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
+        'allergies' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
+    ]);
+
+    // Geocode the address for doctors
+    $latitude = null;
+    $longitude = null;
+
+    if ($request->role === 'doctor') {
+        $geocodeResults = $this->nominatimService->geocode($request->cabinet_address);
+
+        if (empty($geocodeResults)) {
+            return response()->json(['error' => 'Impossible de géocoder cette adresse'], 400);
         }
 
-        try {
-            return DB::transaction(function () use ($request) {
-                // Generate 6-digit verification code
-                $verificationCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-
-                $user = User::create([
-                    'email' => $request->email,
-                    'password' => Hash::make($request->password),
-                    'role' => $request->role,
-                    'is_active' => false,
-                    'verification_code' => $verificationCode,
-                    'verification_code_expires_at' => now()->addHours(24), // Code expires in 24 hours
-                ]);
-
-                if ($request->role === 'patient') {
-                    Patient::create([
-                        'user_id' => $user->id,
-                        'name' => $request->name,
-                        'date_of_birth' => $request->date_of_birth,
-                        'gender' => $request->gender,
-                        'address' => $request->address,
-                        'city' => $request->city,
-                        'code_postal' => $request->code_postal,
-                        'medical_history' => $request->medical_history,
-                        'allergies' => $request->allergies,
-                    ]);
-                } elseif ($request->role === 'doctor') {
-                    Doctor::create([
-                        'user_id' => $user->id,
-                        'name' => $request->name,
-                        'license_number' => $request->license_number,
-                        'bio' => $request->bio,
-                        'cabinet_name' => $request->cabinet_name,
-                        'cabinet_address' => $request->cabinet_address,
-                        'cabinet_city' => $request->cabinet_city,
-                        'cabinet_postal_code' => $request->cabinet_postal_code,
-                        'latitude' => $request->latitude,
-                        'longitude' => $request->longitude,
-                        'consultation_fees' => $request->consultation_fees,
-                    ]);
-                }
-
-                // Send verification email
-                try {
-                    // Log the code being sent for debugging
-                    Log::info('Sending verification code: ' . $verificationCode . ' to email: ' . $user->email);
-
-                    $mail = new VerificationCode($verificationCode);
-                    Mail::to($user->email)->send($mail);
-
-                    Log::info('Verification email sent successfully');
-                } catch (\Exception $e) {
-                    Log::error('Failed to send verification email: ' . $e->getMessage());
-                    throw new \Exception('Failed to send verification email: ' . $e->getMessage());
-                }
-
-                return response()->json([
-                    'message' => 'User registered successfully. Please check your email for verification code.',
-                    'user' => $user->only(['id', 'email', 'role']),
-                    // Remove debug_code in production
-                    'debug_code' => config('app.debug') ? $verificationCode : null,
-                ], 201);
-            });
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Registration failed',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        $firstResult = $geocodeResults[0];
+        $latitude = $firstResult['lat'];
+        $longitude = $firstResult['lon'];
     }
+
+    try {
+        return DB::transaction(function () use ($request, $latitude, $longitude) {
+            // Generate 6-digit verification code
+            $verificationCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+
+            $user = User::create([
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => $request->role,
+                'is_active' => false,
+                'verification_code' => $verificationCode,
+                'verification_code_expires_at' => now()->addHours(24), // Code expires in 24 hours
+            ]);
+
+            if ($request->role === 'patient') {
+                Patient::create([
+                    'user_id' => $user->id,
+                    'name' => $request->name,
+                    'date_of_birth' => $request->date_of_birth,
+                    'gender' => $request->gender,
+                    'address' => $request->address,
+                    'city' => $request->city,
+                    'code_postal' => $request->code_postal,
+                    'medical_history' => $request->medical_history,
+                    'allergies' => $request->allergies,
+                ]);
+            } elseif ($request->role === 'doctor') {
+                Doctor::create([
+                    'user_id' => $user->id,
+                    'name' => $request->name,
+                    'specialite' => $request->specialite,
+                    'heure_ouverture' => $request->heure_ouverture,
+                    'heure_fermeture' => $request->heure_fermeture,
+                    'jours_travail' => $request->jours_travail,
+                    'license_number' => $request->license_number,
+                    'bio' => $request->bio,
+                    'cabinet_name' => $request->cabinet_name,
+                    'cabinet_address' => $request->cabinet_address,
+                    'cabinet_city' => $request->cabinet_city,
+                    'cabinet_postal_code' => $request->cabinet_postal_code,
+                    'consultation_fees' => $request->consultation_fees,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
+                ]);
+            }
+
+            // Send verification email
+            try {
+                // Log the code being sent for debugging
+                Log::info('Sending verification code: ' . $verificationCode . ' to email: ' . $user->email);
+
+                $mail = new VerificationCode($verificationCode);
+                Mail::to($user->email)->send($mail);
+
+                Log::info('Verification email sent successfully');
+            } catch (\Exception $e) {
+                Log::error('Failed to send verification email: ' . $e->getMessage());
+                throw new \Exception('Failed to send verification email: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'message' => 'User registered successfully. Please check your email for verification code.',
+                'user' => $user->only(['id', 'email', 'role']),
+                // Remove debug_code in production
+                'debug_code' => config('app.debug') ? $verificationCode : null,
+            ], 201);
+        });
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Registration failed',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+}
 
     /**
      * Verify email using the provided code
