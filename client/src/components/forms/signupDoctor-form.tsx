@@ -1,27 +1,25 @@
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Link, useNavigate } from "react-router-dom"
-import { toast } from "sonner"
-import { useForm, type SubmitHandler } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useState } from "react"
-import { Textarea } from "@/components/ui/textarea"
-import { useAppDispatch } from "@/store/hooks"
-import { actAuthRegister } from "@/store/auth/authSlice"
-import { doctorRegisterSchema, type TFormInputs } from "@/validations/DoctorRegisterSchema"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { useAppDispatch } from "@/store/hooks";
+import { actAuthRegister } from "@/store/auth/authSlice";
+import { doctorRegisterSchema, type TFormInputs } from "@/validations/DoctorRegisterSchema";
+import { Check } from "lucide-react";
 
-const SignupDoctorForm = ({
-  className,
-  ...props
-}: React.ComponentProps<"div">) => {
+const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  
+
   const {
     register,
     handleSubmit,
@@ -44,14 +42,17 @@ const SignupDoctorForm = ({
       cabinet_address: "",
       license_number: "",
       bio: "",
+      specialite: "",
+      heure_ouverture: "",
+      heure_fermeture: "",
+      jours_travail: [],
       consultation_fees: "",
-      latitude: 0,
-      longitude: 0
     },
   });
 
-  // Watch password field for real-time validation
+  // Watch password and jours_travail fields for real-time validation
   const password = watch("password");
+  const joursTravail = watch("jours_travail");
 
   // Get current step fields for validation
   const getCurrentStepFields = (): (keyof TFormInputs)[] => {
@@ -59,9 +60,9 @@ const SignupDoctorForm = ({
       case 1:
         return ["name", "email", "password", "password_confirmation"];
       case 2:
-        return ["cabinet_name", "cabinet_city", "cabinet_postal_code", "cabinet_address", "latitude", "longitude"];
+        return ["cabinet_name", "cabinet_city", "cabinet_postal_code", "cabinet_address", "heure_ouverture", "heure_fermeture"];
       case 3:
-        return ["license_number", "consultation_fees", "bio"];
+        return ["license_number", "specialite", "jours_travail", "consultation_fees", "bio"];
       default:
         return [];
     }
@@ -73,7 +74,7 @@ const SignupDoctorForm = ({
       setLoading(true);
       // Dispatch the registration action
       await dispatch(actAuthRegister(data)).unwrap();
-      toast.success("Doctor registration completed successfully!");
+      toast.success("Registration successful! Please verify your email.");
       navigate("/email_verification");
     } catch (error: any) {
       console.error("Registration failed:", error);
@@ -83,40 +84,21 @@ const SignupDoctorForm = ({
     }
   };
 
-  // Function to get current location
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setValue("latitude", position.coords.latitude);
-          setValue("longitude", position.coords.longitude);
-          toast.success("Location obtained successfully!");
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          toast.error("Could not get your location. Please enter manually.");
-        }
-      );
-    } else {
-      toast.error("Geolocation is not supported by this browser.");
-    }
-  };
-
   const handleNext = async () => {
     const currentFields = getCurrentStepFields();
     const isCurrentStepValid = await trigger(currentFields);
-    
+
     if (isCurrentStepValid) {
       setStep(step + 1);
       // Scroll to top on step change for better UX
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handlePrevious = () => {
     if (step > 1) {
       setStep(step - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -126,6 +108,9 @@ const SignupDoctorForm = ({
     "Provide your cabinet details",
     "Complete your professional information",
   ];
+
+  // Available days for jours_travail
+  const availableDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
     <div className={cn("min-h-screen w-full flex items-center justify-center p-4 sm:p-6", className)} {...props}>
@@ -142,7 +127,7 @@ const SignupDoctorForm = ({
                 <h1 className="mb-2 text-3xl font-bold text-white">MediConnect</h1>
                 <p className="text-blue-100">For Healthcare Professionals</p>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex items-center">
                   <div className="flex items-center justify-center w-10 h-10 mr-4 bg-blue-500 rounded-full">
@@ -163,7 +148,7 @@ const SignupDoctorForm = ({
                   <p className="text-white">Professional details</p>
                 </div>
               </div>
-              
+
               <div className="text-sm text-blue-200">
                 <p>✓ Connect with patients</p>
                 <p>✓ Manage your schedule</p>
@@ -171,7 +156,7 @@ const SignupDoctorForm = ({
               </div>
             </div>
           </div>
-          
+
           <div className="flex flex-col justify-center p-6 bg-white sm:p-8 rounded-r-2xl">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="flex flex-col gap-6">
@@ -200,19 +185,21 @@ const SignupDoctorForm = ({
                   {step === 1 && (
                     <>
                       <div className="grid gap-2">
-                        <Label htmlFor="name" className="text-sm font-medium text-gray-700">Full Name</Label>
+                        <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                          Full Name
+                        </Label>
                         <Input
                           id="name"
                           {...register("name")}
                           placeholder="Enter your full name"
                           className={cn(errors.name ? "border-red-500 focus:ring-red-500" : "")}
                         />
-                        {errors.name && (
-                          <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>
-                        )}
+                        {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+                        <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                          Email
+                        </Label>
                         <Input
                           id="email"
                           type="email"
@@ -220,12 +207,12 @@ const SignupDoctorForm = ({
                           placeholder="example@test.com"
                           className={cn(errors.email ? "border-red-500 focus:ring-red-500" : "")}
                         />
-                        {errors.email && (
-                          <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
-                        )}
+                        {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+                        <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                          Password
+                        </Label>
                         <Input
                           id="password"
                           type="password"
@@ -233,15 +220,15 @@ const SignupDoctorForm = ({
                           className={cn(errors.password ? "border-red-500 focus:ring-red-500" : "")}
                           {...register("password")}
                         />
-                        {errors.password && (
-                          <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
-                        )}
+                        {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
                         {password && password.length >= 8 && (
                           <p className="mt-1 text-xs text-green-600">✓ Strong password</p>
                         )}
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="password_confirmation" className="text-sm font-medium text-gray-700">Confirm Password</Label>
+                        <Label htmlFor="password_confirmation" className="text-sm font-medium text-gray-700">
+                          Confirm Password
+                        </Label>
                         <Input
                           id="password_confirmation"
                           type="password"
@@ -252,9 +239,11 @@ const SignupDoctorForm = ({
                         {errors.password_confirmation && (
                           <p className="mt-1 text-xs text-red-600">{errors.password_confirmation.message}</p>
                         )}
-                        {password && watch("password_confirmation") && password === watch("password_confirmation") && (
-                          <p className="mt-1 text-xs text-green-600">✓ Passwords match</p>
-                        )}
+                        {password &&
+                          watch("password_confirmation") &&
+                          password === watch("password_confirmation") && (
+                            <p className="mt-1 text-xs text-green-600">✓ Passwords match</p>
+                          )}
                       </div>
                     </>
                   )}
@@ -262,7 +251,9 @@ const SignupDoctorForm = ({
                   {step === 2 && (
                     <>
                       <div className="grid gap-2">
-                        <Label htmlFor="cabinet_name" className="text-sm font-medium text-gray-700">Cabinet Name</Label>
+                        <Label htmlFor="cabinet_name" className="text-sm font-medium text-gray-700">
+                          Cabinet Name
+                        </Label>
                         <Input
                           id="cabinet_name"
                           {...register("cabinet_name")}
@@ -275,7 +266,9 @@ const SignupDoctorForm = ({
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                          <Label htmlFor="cabinet_city" className="text-sm font-medium text-gray-700">City</Label>
+                          <Label htmlFor="cabinet_city" className="text-sm font-medium text-gray-700">
+                            City
+                          </Label>
                           <Input
                             id="cabinet_city"
                             {...register("cabinet_city")}
@@ -287,7 +280,9 @@ const SignupDoctorForm = ({
                           )}
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="cabinet_postal_code" className="text-sm font-medium text-gray-700">Postal Code</Label>
+                          <Label htmlFor="cabinet_postal_code" className="text-sm font-medium text-gray-700">
+                            Postal Code
+                          </Label>
                           <Input
                             id="cabinet_postal_code"
                             {...register("cabinet_postal_code")}
@@ -300,7 +295,9 @@ const SignupDoctorForm = ({
                         </div>
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="cabinet_address" className="text-sm font-medium text-gray-700">Address</Label>
+                        <Label htmlFor="cabinet_address" className="text-sm font-medium text-gray-700">
+                          Address
+                        </Label>
                         <Input
                           id="cabinet_address"
                           {...register("cabinet_address")}
@@ -311,54 +308,35 @@ const SignupDoctorForm = ({
                           <p className="mt-1 text-xs text-red-600">{errors.cabinet_address.message}</p>
                         )}
                       </div>
-                      
-                      {/* Coordonnées géographiques */}
-                      <div className="pt-4 border-t border-gray-200">
-                        <div className="flex items-center justify-between mb-4">
-                          <Label className="text-sm font-medium text-gray-700">Geographic Coordinates</Label>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="sm"
-                            onClick={getCurrentLocation}
-                          >
-                            Use My Location
-                          </Button>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="heure_ouverture" className="text-sm font-medium text-gray-700">
+                            Opening Time
+                          </Label>
+                          <Input
+                            id="heure_ouverture"
+                            type="time"
+                            {...register("heure_ouverture")}
+                            className={cn(errors.heure_ouverture ? "border-red-500 focus:ring-red-500" : "")}
+                          />
+                          {errors.heure_ouverture && (
+                            <p className="mt-1 text-xs text-red-600">{errors.heure_ouverture.message}</p>
+                          )}
                         </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="grid gap-2">
-                            <Label htmlFor="latitude" className="text-sm font-medium text-gray-700">Latitude</Label>
-                            <Input
-                              id="latitude"
-                              type="number"
-                              step="any"
-                              {...register("latitude", { valueAsNumber: true })}
-                              placeholder="e.g., 48.8566"
-                              className={cn(errors.latitude ? "border-red-500 focus:ring-red-500" : "")}
-                            />
-                            {errors.latitude && (
-                              <p className="mt-1 text-xs text-red-600">{errors.latitude.message}</p>
-                            )}
-                          </div>
-                          <div className="grid gap-2">
-                            <Label htmlFor="longitude" className="text-sm font-medium text-gray-700">Longitude</Label>
-                            <Input
-                              id="longitude"
-                              type="number"
-                              step="any"
-                              {...register("longitude", { valueAsNumber: true })}
-                              placeholder="e.g., 2.3522"
-                              className={cn(errors.longitude ? "border-red-500 focus:ring-red-500" : "")}
-                            />
-                            {errors.longitude && (
-                              <p className="mt-1 text-xs text-red-600">{errors.longitude.message}</p>
-                            )}
-                          </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="heure_fermeture" className="text-sm font-medium text-gray-700">
+                            Closing Time
+                          </Label>
+                          <Input
+                            id="heure_fermeture"
+                            type="time"
+                            {...register("heure_fermeture")}
+                            className={cn(errors.heure_fermeture ? "border-red-500 " : "")}
+                          />
+                          {errors.heure_fermeture && (
+                            <p className="mt-1 text-xs text-red-600">{errors.heure_fermeture.message}</p>
+                          )}
                         </div>
-                        <p className="mt-2 text-xs text-gray-500">
-                          These coordinates help patients find your cabinet location on maps.
-                        </p>
                       </div>
                     </>
                   )}
@@ -366,7 +344,64 @@ const SignupDoctorForm = ({
                   {step === 3 && (
                     <>
                       <div className="grid gap-2">
-                        <Label htmlFor="license_number" className="text-sm font-medium text-gray-700">License Number</Label>
+                        <Label htmlFor="specialite" className="text-sm font-medium text-gray-700">
+                          Specialty
+                        </Label>
+                        <Input
+                          id="specialite"
+                          {...register("specialite")}
+                          placeholder="Enter your specialty"
+                          className={cn(errors.specialite ? "border-red-500 focus:ring-red-500" : "")}
+                        />
+                        {errors.specialite && (
+                          <p className="mt-1 text-xs text-red-600">{errors.specialite.message}</p>
+                        )}
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="jours_travail" className="text-sm font-medium text-gray-700">
+                          Working Days
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {availableDays.map((day) => {
+                            const isSelected = joursTravail?.includes(day) || false;
+                            return (
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => {
+                                  const currentDays = joursTravail || [];
+                                  if (isSelected) {
+                                    setValue("jours_travail", currentDays.filter((d) => d !== day));
+                                  } else {
+                                    setValue("jours_travail", [...currentDays, day]);
+                                  }
+                                }}
+                                className={cn(
+                                  "flex items-center gap-2 px-2 py-2 rounded-full border text-sm font-medium transition-colors",
+                                  "hover:shadow-sm focus:outline-none  focus:ring-primary focus:ring-offset-1",
+                                  isSelected
+                                    ? "bg-green-100 border-green-400 text-green-800 gap-2 px-3 py-2"
+                                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                                )}
+                                aria-pressed={isSelected}
+                              >
+                                {isSelected ? <Check className="w-4 h-4" /> : day}
+                                
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {joursTravail && joursTravail.length > 0 && (
+                          <p className="mt-1 text-xs text-green-600">Selected: {joursTravail.join(", ")}</p>
+                        )}
+                        {errors.jours_travail && (
+                          <p className="mt-1 text-xs text-red-600">{errors.jours_travail.message}</p>
+                        )}
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="license_number" className="text-sm font-medium text-gray-700">
+                          License Number
+                        </Label>
                         <Input
                           id="license_number"
                           {...register("license_number")}
@@ -378,10 +413,12 @@ const SignupDoctorForm = ({
                         )}
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="consultation_fees" className="text-sm font-medium text-gray-700">Consultation Fees</Label>
+                        <Label htmlFor="consultation_fees" className="text-sm font-medium text-gray-700">
+                          Consultation Fees
+                        </Label>
                         <Input
                           id="consultation_fees"
-                          type="number"
+                          type="text"
                           {...register("consultation_fees")}
                           placeholder="Enter consultation fees"
                           className={cn(errors.consultation_fees ? "border-red-500 focus:ring-red-500" : "")}
@@ -401,9 +438,7 @@ const SignupDoctorForm = ({
                           rows={4}
                           className={cn(errors.bio ? "border-red-500 focus:ring-red-500" : "")}
                         />
-                        {errors.bio && (
-                          <p className="mt-1 text-xs text-red-600">{errors.bio.message}</p>
-                        )}
+                        {errors.bio && <p className="mt-1 text-xs text-red-600">{errors.bio.message}</p>}
                       </div>
                     </>
                   )}
@@ -411,38 +446,36 @@ const SignupDoctorForm = ({
 
                 <div className={cn("flex gap-3", step === 1 ? "justify-end" : "justify-between")}>
                   {step > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePrevious}
-                      className="min-w-[100px]"
-                    >
+                    <Button type="button" variant="outline" onClick={handlePrevious} className="min-w-[100px]">
                       Back
                     </Button>
                   )}
                   {step < 3 ? (
-                    <Button
-                      type="button"
-                      onClick={handleNext}
-                      className="min-w-[100px] ml-auto"
-                    >
+                    <Button type="button" onClick={handleNext} className="min-w-[100px] ml-auto">
                       Continue
                     </Button>
                   ) : (
-                    <Button
-                      disabled={loading}
-                      type="submit"
-                      className="min-w-[100px] ml-auto"
-                    >
+                    <Button disabled={loading} type="submit" className="min-w-[100px] ml-auto">
                       {loading ? (
                         <span className="flex items-center justify-center">
-                          <svg className="w-4 h-4 mr-2 -ml-1 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          <svg
+                            className="w-4 h-4 mr-2 -ml-1 text-white animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
                           </svg>
                           Processing...
                         </span>
-                      ) : "Complete Registration"}
+                      ) : (
+                        "Complete Registration"
+                      )}
                     </Button>
                   )}
                 </div>
@@ -485,6 +518,6 @@ const SignupDoctorForm = ({
       `}</style>
     </div>
   );
-}
+};
 
 export default SignupDoctorForm;

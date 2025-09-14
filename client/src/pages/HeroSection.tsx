@@ -3,7 +3,16 @@ import { Brain, Bone, Baby, ArrowRight, Check } from "lucide-react"
 import { Star, Quote } from "lucide-react";
 import { Facebook, Instagram, Twitter, Users, Clock } from "lucide-react"
 import  ContactSection from "./Contact-section";
+import { Search } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+// import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+// import { useState } from "react";
 export default function HeroSection() {
+  //  const [open, setOpen] = useState(false);
+
+  // Toggle dialog open state
+  // const toggleDialog = () => setOpen(!open);
 const features = [
     "Symptom Checker",
     "Chronic Condition Monitoring", 
@@ -84,47 +93,51 @@ const features = [
     <div className="min-h-screen bg-white">
     
       {/* Hero Section */}
-      <section className="sm:py-12 md:py-16 bg-gradient-to-br from-blue-50 to-indigo-50 ">
-        <div className="container mx-auto sm:px-6 lg:px-8 xl:px-12">
-          <div className="grid items-center grid-cols-1 gap-8 sm:gap-10 md:gap-12 lg:grid-cols-2 xl:gap-16">
-            {/* Left Content */}
-            <div className="order-2 space-y-4 lg:order-1 sm:space-y-6 lg:space-y-8">
-              <div className="space-y-4 sm:space-y-6">
-                <h1 className="text-2xl font-bold leading-tight text-gray-900 sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">
-                  Inspiring Healthier
-                  <br className="hidden sm:block" />
-                  Tomorrows, Today!
-                </h1>
+      <section className="relative bg-center bg-cover sm:py-12 md:py-16 lg:py:20 max-h-[600px] border-rounded-full"
+  style={{
+    backgroundImage: `url(https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg)`,
+    backgroundPosition: 'right',
+  }}>
+     {/* Overlay for better text readability */}
+  <div className="absolute inset-0 opacity-50 bg-black/75"></div>
 
-                <p className="text-sm leading-relaxed text-gray-600 sm:text-base md:text-lg lg:text-xl">
-                  Take Control Of Your Health And Experience The Benefits
-                  <br className="hidden sm:block" />
-                  Of Healthcare With Our Platform.
-                </p>
+     
 
-               <button className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-white transition-all bg-blue-500 rounded-full group hover:bg-primary hover:text-white">
-                 Book An Appointement
-                 <ArrowRight className="w-4 h-4 ml-2 transition-transform sm:w-5 sm:h-5 group-hover:translate-x-1" />
-               </button>
+      {/* Main Content */}
+      <div className="container relative z-10 flex flex-col items-center justify-center max-h-[500px] px-4 py-20 mx-auto text-center ">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* Main Heading */}
+          <div className="space-y-4">
+            <h1 className="text-5xl font-bold text-white md:text-6xl lg:text-7xl text-balance">
+              Inspiring healthier{" "}
+              <span className="inline-block px-4 py-2 rounded-lg text-secondary-foreground bg-white/10">
+                Tomorrows, Today!
+              </span>
+            </h1>
+          </div>
+
+          {/* Search Bar */}
+          <div className="w-full max-w-2xl mx-auto">
+            <div className="flex flex-col gap-3 p-2 border bg-white/10 sm:flex-row backdrop-blur-sm rounded-xl border-white/20">
+              <div className="relative flex-1">
+                <Search className="absolute w-5 h-5 transform -translate-y-1/2 left-4 top-1/2 text-white/70" />
+                <Input
+                  type="text"
+                  placeholder="Rechercher un patient, une consultation, une prescription..."
+                  className="h-12 pl-12 text-lg text-white bg-white/20 border-white/30 placeholder:text-white/70"
+                />
               </div>
-            </div>
-                  
-            {/* Right Content - Medical Team Image */}
-            <div className="relative order-1 lg:order-2">
-              <div className="relative">
-                <div className="relative">
-                  <img
-                    src="https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg"
-                    alt="Medical team - doctor and nurse"
-                    className="object-cover w-full h-48 sm:h-64 md:h-80 lg:h-96 xl:h-[28rem] shadow-lg rounded-2xl sm:rounded-3xl"
-                  />
-                </div>
-              </div>
+              <Button
+                size="lg"
+                className="h-12 px-8 font-semibold text-white text-md bg-secondary hover:bg-secondary/90"
+              >
+                Rechercher
+              </Button>
             </div>
           </div>
         </div>
-      </section>
-
+      </div>
+    </section>
       {/* Services Section */}
       <section className="py-8 bg-white sm:py-12 md:py-16 lg:py-20 xl:py-24">
         <div className="container px-4 mx-auto sm:px-6 lg:px-8 xl:px-12">

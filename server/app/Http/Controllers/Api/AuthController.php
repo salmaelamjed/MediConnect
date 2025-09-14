@@ -135,8 +135,6 @@ public function register(Request $request)
             return response()->json([
                 'message' => 'User registered successfully. Please check your email for verification code.',
                 'user' => $user->only(['id', 'email', 'role']),
-                // Remove debug_code in production
-                'debug_code' => config('app.debug') ? $verificationCode : null,
             ], 201);
         });
     } catch (\Exception $e) {

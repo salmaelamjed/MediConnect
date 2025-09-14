@@ -20,18 +20,19 @@ const doctorRegisterSchema = z
     password_confirmation: z.string().min(1, {
       message: "Password confirmation is required.",
     }),
-    role: z.enum(["admin", "doctor", "patient"], {
-      message: "Role must be either 'admin', 'doctor', or 'patient'.",
+    role: z.literal("doctor", {
+      message: "Role must be 'doctor' for this form.",
     }),
     name: z.string().min(1, {
       message: "Name is required.",
     }),
+    specialite: z.string().min(1, {
+      message: "Specialty is required.",
+    }),
     license_number: z.string().min(1, {
       message: "License number is required.",
     }),
-    bio: z.string().min(1, {
-      message: "Bio is required.",
-    }),
+    bio: z.string().optional(), // Bio is nullable in the database
     cabinet_name: z.string().min(1, {
       message: "Cabinet name is required.",
     }),
@@ -44,24 +45,23 @@ const doctorRegisterSchema = z
     cabinet_postal_code: z.string().min(1, {
       message: "Cabinet postal code is required.",
     }),
-    latitude: z.coerce
-      .number()
-      .min(-90, {
-        message: "Latitude must be between -90 and 90.",
-      })
-      .max(90, {
-        message: "Latitude must be between -90 and 90.",
+    heure_ouverture: z
+      .string()
+      .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, {
+        message: "Opening time required",
       }),
-    longitude: z.coerce
-      .number()
-      .min(-180, {
-        message: "Longitude must be between -180 and 180.",
-      })
-      .max(180, {
-        message: "Longitude must be between -180 and 180.",
+    heure_fermeture: z
+      .string()
+      .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, {
+        message: "Closing time required",
+      }),
+    jours_travail: z
+      .array(z.string())
+      .min(1, {
+        message: "At least one working day is required.",
       }),
     consultation_fees: z.string().min(1, {
-      message: "Consultation fees is required.",
+      message: "Consultation fees are required.",
     }),
   })
   .refine((data) => data.password === data.password_confirmation, {
