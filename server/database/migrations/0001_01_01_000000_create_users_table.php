@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('password');
             $table->enum('role', ['admin', 'doctor', 'patient']);
             $table->boolean('is_active')->default(true);
+            $table->string('profile_image')->nullable();
             $table->string('verification_code')->nullable();
             $table->timestamp('verification_code_expires_at')->nullable();
             $table->rememberToken();

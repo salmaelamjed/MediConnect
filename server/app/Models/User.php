@@ -15,6 +15,7 @@ class User extends Authenticatable
         'password',
         'role',
         'is_active',
+        'profile_image',
         'email_verified_at',
         'verification_code',
         'verification_code_expires_at',
@@ -34,5 +35,61 @@ class User extends Authenticatable
             'password' => 'hashed',
             'verification_code_expires_at' => 'datetime',
         ];
+    }
+
+     /**
+     * Relation avec le profil médecin si l'utilisateur est un médecin
+     */
+    public function doctor()
+    {
+        return $this->hasOne( Doctor::class);
+    }
+
+    /**
+     * Relation avec les cabinets possédés par cet utilisateur
+     */
+    public function ownedCabinets()
+    {
+        return $this->hasMany(Cabinet::class, 'owner_id');
+    }
+
+    /**
+     * Vérifier si l'utilisateur est un médecin
+     */
+    public function isDoctor(): bool
+    {
+        return $this->role === 'doctor';
+    }
+
+    /**
+     * Vérifier si l'utilisateur est un patient
+     */
+    public function isPatient(): bool
+    {
+        return $this->role === 'patient';
+    }
+
+    /**
+     * Vérifier si l'utilisateur est un admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Scope pour récupérer les utilisateurs actifs
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope pour récupérer les utilisateurs par rôle
+     */
+    public function scopeByRole($query, $role)
+    {
+        return $query->where('role', $role);
     }
 }

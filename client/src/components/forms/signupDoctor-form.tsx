@@ -7,18 +7,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppDispatch } from "@/store/hooks";
 import { actAuthRegister } from "@/store/auth/authSlice";
 import { doctorRegisterSchema, type TFormInputs } from "@/validations/DoctorRegisterSchema";
 import { Check } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [cabinets, setCabinets] = useState<{ id: number; name: string }[]>([]);
 
   const {
     register,
@@ -36,23 +45,59 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
       password: "",
       password_confirmation: "",
       role: "doctor" as const,
+      cabinet_option: "new",
       cabinet_name: "",
       cabinet_city: "",
       cabinet_postal_code: "",
       cabinet_address: "",
+      cabinet_email: "",
+      cabinet_opening_time: "",
+      cabinet_closing_time: "",
+      cabinet_working_days: [],
+      cabinet_id: undefined,
       license_number: "",
       bio: "",
-      specialite: "",
-      heure_ouverture: "",
-      heure_fermeture: "",
-      jours_travail: [],
+      speciality: "",
       consultation_fees: "",
+      start_time: "",
+      end_time: "",
+      available_days: [],
     },
   });
 
-  // Watch password and jours_travail fields for real-time validation
+  // Watch fields for real-time validation
   const password = watch("password");
-  const joursTravail = watch("jours_travail");
+  const cabinetWorkingDays = watch("cabinet_working_days");
+  const availableDays = watch("available_days");
+  const cabinetOption = watch("cabinet_option");
+  const speciality = watch("speciality");
+
+  // Fetch cabinets when speciality changes
+  useEffect(() => {
+    if (step === 2 && cabinetOption === "existing" && speciality) {
+      const fetchCabinets = async () => {
+        try {
+          const response = await fetch(`http://localhost:8000/api/cabinets-by-speciality`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ speciality_id: parseInt(speciality) }),
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setCabinets(data.cabinets || []);
+          } else {
+            toast.error(data.message || "Failed to fetch cabinets");
+          }
+        } catch (error) {
+          toast.error("Error fetching cabinets",error as any);
+        }
+      };
+      fetchCabinets();
+    }
+  }, [step, cabinetOption, speciality]);
 
   // Get current step fields for validation
   const getCurrentStepFields = (): (keyof TFormInputs)[] => {
@@ -60,9 +105,30 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
       case 1:
         return ["name", "email", "password", "password_confirmation"];
       case 2:
-        return ["cabinet_name", "cabinet_city", "cabinet_postal_code", "cabinet_address", "heure_ouverture", "heure_fermeture"];
+        return ["cabinet_option", "cabinet_id"];
       case 3:
-        return ["license_number", "specialite", "jours_travail", "consultation_fees", "bio"];
+        return cabinetOption === "new"
+          ? [
+              "cabinet_name",
+              "cabinet_city",
+              "cabinet_postal_code",
+              "cabinet_address",
+              "cabinet_email",
+              "cabinet_opening_time",
+              "cabinet_closing_time",
+              "cabinet_working_days",
+            ]
+          : [];
+      case 4:
+        return [
+          "speciality",
+          "license_number",
+          "consultation_fees",
+          "bio",
+          "start_time",
+          "end_time",
+          "available_days",
+        ];
       default:
         return [];
     }
@@ -72,8 +138,35 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
   const onSubmit: SubmitHandler<TFormInputs> = async (data: TFormInputs) => {
     try {
       setLoading(true);
-      // Dispatch the registration action
-      await dispatch(actAuthRegister(data)).unwrap();
+      // Map form data to backend expected fields
+      const payload = {
+        email: data.email,
+        password: data.password,
+        password_confirmation: data.password_confirmation,
+        role: data.role,
+        name: data.name,
+        speciality_id: parseInt(data.speciality),
+        license_number: data.license_number,
+        bio: data.bio,
+        consultation_fees: parseFloat(data.consultation_fees),
+        start_time: data.start_time,
+        end_time: data.end_time,
+        available_days: data.available_days,
+        cabinet_option: data.cabinet_option,
+        ...(data.cabinet_option === "new"
+          ? {
+              cabinet_name: data.cabinet_name,
+              cabinet_city: data.cabinet_city,
+              cabinet_postal_code: data.cabinet_postal_code,
+              cabinet_address: data.cabinet_address,
+              cabinet_email: data.cabinet_email,
+              cabinet_opening_time: data.cabinet_opening_time,
+              cabinet_closing_time: data.cabinet_closing_time,
+              cabinet_working_days: data.cabinet_working_days,
+            }
+          : { cabinet_id: data.cabinet_id }),
+      };
+      await dispatch(actAuthRegister(payload)).unwrap();
       toast.success("Registration successful! Please verify your email.");
       navigate("/email_verification");
     } catch (error: any) {
@@ -90,7 +183,6 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
 
     if (isCurrentStepValid) {
       setStep(step + 1);
-      // Scroll to top on step change for better UX
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -102,15 +194,20 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
     }
   };
 
-  const stepTitles = ["Account Details", "Cabinet Information", "Professional Information"];
+  const stepTitles = [
+    "Account Details",
+    "Cabinet Selection",
+    "Cabinet Information",
+    "Professional Information",
+  ];
   const stepDescriptions = [
     "Create your MediConnect Doctor Account",
+    "Choose your cabinet option",
     "Provide your cabinet details",
     "Complete your professional information",
   ];
 
-  // Available days for jours_travail
-  const availableDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const availableDaysList = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
   return (
     <div className={cn("min-h-screen w-full flex items-center justify-center p-4 sm:p-6", className)} {...props}>
@@ -139,11 +236,17 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
                   <div className="flex items-center justify-center w-10 h-10 mr-4 bg-blue-400 rounded-full">
                     <span className="font-semibold text-white">2</span>
                   </div>
-                  <p className="text-white">Cabinet information</p>
+                  <p className="text-white">Cabinet selection</p>
                 </div>
                 <div className="flex items-center">
                   <div className="flex items-center justify-center w-10 h-10 mr-4 bg-blue-300 rounded-full">
                     <span className="font-semibold text-white">3</span>
+                  </div>
+                  <p className="text-white">Cabinet information</p>
+                </div>
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center w-10 h-10 mr-4 bg-blue-200 rounded-full">
+                    <span className="font-semibold text-white">4</span>
                   </div>
                   <p className="text-white">Professional details</p>
                 </div>
@@ -163,9 +266,9 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
                 {/* Step Indicator */}
                 <div className="mb-2">
                   <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-xs font-semibold tracking-wide text-blue-600 uppercase">Step {step} of 3</h2>
+                    <h2 className="text-xs font-semibold tracking-wide text-blue-600 uppercase">Step {step} of 4</h2>
                     <div className="flex space-x-1">
-                      {[1, 2, 3].map((i) => (
+                      {[1, 2, 3, 4].map((i) => (
                         <div
                           key={i}
                           className={cn(
@@ -251,6 +354,63 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
                   {step === 2 && (
                     <>
                       <div className="grid gap-2">
+                        <Label className="text-sm font-medium text-gray-700">Cabinet Option</Label>
+                        <RadioGroup
+                          value={cabinetOption}
+                          onValueChange={(value) => setValue("cabinet_option", value as "new" | "existing")}
+                          className="flex flex-col gap-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="new" id="new" />
+                            <Label htmlFor="new">Create a new cabinet</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="existing" id="existing" />
+                            <Label htmlFor="existing">Join an existing cabinet</Label>
+                          </div>
+                        </RadioGroup>
+                        {errors.cabinet_option && (
+                          <p className="mt-1 text-xs text-red-600">{errors.cabinet_option.message}</p>
+                        )}
+                      </div>
+                      {cabinetOption === "existing" && (
+                        <div className="grid gap-2">
+                          <Label htmlFor="cabinet_id" className="text-sm font-medium text-gray-700">
+                            Select Cabinet
+                          </Label>
+                          <Select
+                            onValueChange={(value) => setValue("cabinet_id", parseInt(value))}
+                            disabled={!cabinets.length}
+                          >
+                            <SelectTrigger
+                              className={cn(errors.cabinet_id ? "border-red-500 focus:ring-red-500" : "")}
+                            >
+                              <SelectValue placeholder="Select a cabinet" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {cabinets.map((cabinet) => (
+                                <SelectItem key={cabinet.id} value={cabinet.id.toString()}>
+                                  {cabinet.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errors.cabinet_id && (
+                            <p className="mt-1 text-xs text-red-600">{errors.cabinet_id.message}</p>
+                          )}
+                          {!cabinets.length && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              No cabinets available for the selected specialty. Please select a specialty first or create a new cabinet.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {step === 3 && cabinetOption === "new" && (
+                    <>
+                      <div className="grid gap-2">
                         <Label htmlFor="cabinet_name" className="text-sm font-medium text-gray-700">
                           Cabinet Name
                         </Label>
@@ -308,77 +468,73 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
                           <p className="mt-1 text-xs text-red-600">{errors.cabinet_address.message}</p>
                         )}
                       </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="cabinet_email" className="text-sm font-medium text-gray-700">
+                          Cabinet Email
+                        </Label>
+                        <Input
+                          id="cabinet_email"
+                          type="email"
+                          {...register("cabinet_email")}
+                          placeholder="Enter cabinet email"
+                          className={cn(errors.cabinet_email ? "border-red-500 focus:ring-red-500" : "")}
+                        />
+                        {errors.cabinet_email && (
+                          <p className="mt-1 text-xs text-red-600">{errors.cabinet_email.message}</p>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                          <Label htmlFor="heure_ouverture" className="text-sm font-medium text-gray-700">
+                          <Label htmlFor="cabinet_opening_time" className="text-sm font-medium text-gray-700">
                             Opening Time
                           </Label>
                           <Input
-                            id="heure_ouverture"
+                            id="cabinet_opening_time"
                             type="time"
-                            {...register("heure_ouverture")}
-                            className={cn(errors.heure_ouverture ? "border-red-500 focus:ring-red-500" : "")}
+                            {...register("cabinet_opening_time")}
+                            className={cn(errors.cabinet_opening_time ? "border-red-500 focus:ring-red-500" : "")}
                           />
-                          {errors.heure_ouverture && (
-                            <p className="mt-1 text-xs text-red-600">{errors.heure_ouverture.message}</p>
+                          {errors.cabinet_opening_time && (
+                            <p className="mt-1 text-xs text-red-600">{errors.cabinet_opening_time.message}</p>
                           )}
                         </div>
                         <div className="grid gap-2">
-                          <Label htmlFor="heure_fermeture" className="text-sm font-medium text-gray-700">
+                          <Label htmlFor="cabinet_closing_time" className="text-sm font-medium text-gray-700">
                             Closing Time
                           </Label>
                           <Input
-                            id="heure_fermeture"
+                            id="cabinet_closing_time"
                             type="time"
-                            {...register("heure_fermeture")}
-                            className={cn(errors.heure_fermeture ? "border-red-500 " : "")}
+                            {...register("cabinet_closing_time")}
+                            className={cn(errors.cabinet_closing_time ? "border-red-500 focus:ring-red-500" : "")}
                           />
-                          {errors.heure_fermeture && (
-                            <p className="mt-1 text-xs text-red-600">{errors.heure_fermeture.message}</p>
+                          {errors.cabinet_closing_time && (
+                            <p className="mt-1 text-xs text-red-600">{errors.cabinet_closing_time.message}</p>
                           )}
                         </div>
                       </div>
-                    </>
-                  )}
-
-                  {step === 3 && (
-                    <>
                       <div className="grid gap-2">
-                        <Label htmlFor="specialite" className="text-sm font-medium text-gray-700">
-                          Specialty
-                        </Label>
-                        <Input
-                          id="specialite"
-                          {...register("specialite")}
-                          placeholder="Enter your specialty"
-                          className={cn(errors.specialite ? "border-red-500 focus:ring-red-500" : "")}
-                        />
-                        {errors.specialite && (
-                          <p className="mt-1 text-xs text-red-600">{errors.specialite.message}</p>
-                        )}
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="jours_travail" className="text-sm font-medium text-gray-700">
-                          Working Days
+                        <Label htmlFor="cabinet_working_days" className="text-sm font-medium text-gray-700">
+                          Cabinet Working Days
                         </Label>
                         <div className="flex flex-wrap gap-2">
-                          {availableDays.map((day) => {
-                            const isSelected = joursTravail?.includes(day) || false;
+                          {availableDaysList.map((day) => {
+                            const isSelected = cabinetWorkingDays?.includes(day) || false;
                             return (
                               <button
                                 key={day}
                                 type="button"
                                 onClick={() => {
-                                  const currentDays = joursTravail || [];
+                                  const currentDays = cabinetWorkingDays || [];
                                   if (isSelected) {
-                                    setValue("jours_travail", currentDays.filter((d) => d !== day));
+                                    setValue("cabinet_working_days", currentDays.filter((d) => d !== day));
                                   } else {
-                                    setValue("jours_travail", [...currentDays, day]);
+                                    setValue("cabinet_working_days", [...currentDays, day]);
                                   }
                                 }}
                                 className={cn(
                                   "flex items-center gap-2 px-2 py-2 rounded-full border text-sm font-medium transition-colors",
-                                  "hover:shadow-sm focus:outline-none  focus:ring-primary focus:ring-offset-1",
+                                  "hover:shadow-sm focus:outline-none focus:ring-primary focus:ring-offset-1",
                                   isSelected
                                     ? "bg-green-100 border-green-400 text-green-800 gap-2 px-3 py-2"
                                     : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -386,16 +542,35 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
                                 aria-pressed={isSelected}
                               >
                                 {isSelected ? <Check className="w-4 h-4" /> : day}
-                                
                               </button>
                             );
                           })}
                         </div>
-                        {joursTravail && joursTravail.length > 0 && (
-                          <p className="mt-1 text-xs text-green-600">Selected: {joursTravail.join(", ")}</p>
+                        {cabinetWorkingDays && cabinetWorkingDays.length > 0 && (
+                          <p className="mt-1 text-xs text-green-600">Selected: {cabinetWorkingDays.join(", ")}</p>
                         )}
-                        {errors.jours_travail && (
-                          <p className="mt-1 text-xs text-red-600">{errors.jours_travail.message}</p>
+                        {errors.cabinet_working_days && (
+                          <p className="mt-1 text-xs text-red-600">{errors.cabinet_working_days.message}</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {step === 4 && (
+                    <>
+                      <div className="grid gap-2">
+                        <Label htmlFor="speciality" className="text-sm font-medium text-gray-700">
+                          Specialty ID
+                        </Label>
+                        <Input
+                          id="speciality"
+                          type="text"
+                          {...register("speciality")}
+                          placeholder="Enter your specialty ID (e.g., 1 for Cardiology)"
+                          className={cn(errors.speciality ? "border-red-500 focus:ring-red-500" : "")}
+                        />
+                        {errors.speciality && (
+                          <p className="mt-1 text-xs text-red-600">{errors.speciality.message}</p>
                         )}
                       </div>
                       <div className="grid gap-2">
@@ -440,6 +615,76 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
                         />
                         {errors.bio && <p className="mt-1 text-xs text-red-600">{errors.bio.message}</p>}
                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="start_time" className="text-sm font-medium text-gray-700">
+                            Start Time
+                          </Label>
+                          <Input
+                            id="start_time"
+                            type="time"
+                            {...register("start_time")}
+                            className={cn(errors.start_time ? "border-red-500 focus:ring-red-500" : "")}
+                          />
+                          {errors.start_time && (
+                            <p className="mt-1 text-xs text-red-600">{errors.start_time.message}</p>
+                          )}
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="end_time" className="text-sm font-medium text-gray-700">
+                            End Time
+                          </Label>
+                          <Input
+                            id="end_time"
+                            type="time"
+                            {...register("end_time")}
+                            className={cn(errors.end_time ? "border-red-500 focus:ring-red-500" : "")}
+                          />
+                          {errors.end_time && (
+                            <p className="mt-1 text-xs text-red-600">{errors.end_time.message}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="available_days" className="text-sm font-medium text-gray-700">
+                          Doctor Working Days
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {availableDaysList.map((day) => {
+                            const isSelected = availableDays?.includes(day) || false;
+                            return (
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => {
+                                  const currentDays = availableDays || [];
+                                  if (isSelected) {
+                                    setValue("available_days", currentDays.filter((d) => d !== day));
+                                  } else {
+                                    setValue("available_days", [...currentDays, day]);
+                                  }
+                                }}
+                                className={cn(
+                                  "flex items-center gap-2 px-2 py-2 rounded-full border text-sm font-medium transition-colors",
+                                  "hover:shadow-sm focus:outline-none focus:ring-primary focus:ring-offset-1",
+                                  isSelected
+                                    ? "bg-green-100 border-green-400 text-green-800 gap-2 px-3 py-2"
+                                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                                )}
+                                aria-pressed={isSelected}
+                              >
+                                {isSelected ? <Check className="w-4 h-4" /> : day}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {availableDays && availableDays.length > 0 && (
+                          <p className="mt-1 text-xs text-green-600">Selected: {availableDays.join(", ")}</p>
+                        )}
+                        {errors.available_days && (
+                          <p className="mt-1 text-xs text-red-600">{errors.available_days.message}</p>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
@@ -450,7 +695,7 @@ const SignupDoctorForm = ({ className, ...props }: React.ComponentProps<"div">) 
                       Back
                     </Button>
                   )}
-                  {step < 3 ? (
+                  {step < 4 ? (
                     <Button type="button" onClick={handleNext} className="min-w-[100px] ml-auto">
                       Continue
                     </Button>

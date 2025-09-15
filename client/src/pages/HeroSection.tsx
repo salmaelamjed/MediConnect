@@ -110,7 +110,7 @@ const features = [
           <div className="space-y-4">
             <h1 className="text-5xl font-bold text-white md:text-6xl lg:text-7xl text-balance">
               Inspiring healthier{" "}
-              <span className="inline-block px-4 py-2 rounded-lg text-secondary-foreground bg-white/10">
+              <span className="inline-block px-4 py-2 ">
                 Tomorrows, Today!
               </span>
             </h1>
@@ -123,8 +123,8 @@ const features = [
                 <Search className="absolute w-5 h-5 transform -translate-y-1/2 left-4 top-1/2 text-white/70" />
                 <Input
                   type="text"
-                  placeholder="Rechercher un patient, une consultation, une prescription..."
-                  className="h-12 pl-12 text-lg text-white bg-white/20 border-white/30 placeholder:text-white/70"
+                  placeholder="Search for medical clinic , doctors , services ..."
+                  className="h-12 pl-12 text-3xl font-medium text-white bg-white/20 border-white/30 placeholder:text-white/70"
                 />
               </div>
               <Button
