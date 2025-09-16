@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CabinetController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\SpecialityController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -29,3 +31,14 @@ Route::prefix('password-reset')->group(function () {
         ->name('password.reset.change');
     Route::post('/resend-code', [PasswordResetController::class, 'resendPasswordCode']);
 });
+//route for specialities
+Route::get('/specialities',[SpecialityController::class, 'allSpecialities']);
+Route::get('/specialities/active', [SpecialityController::class, 'allSpecialitiesActive']);
+
+
+//route for cabinets
+Route::get('/cabinets/active', [CabinetController::class, 'allCabinetsActive'])->name('cabinets.active');
+Route::get('/cabinets', [CabinetController::class, 'allCabinets'])->name('cabinets.all');
+Route::get('/cabinets/name/{name}', [CabinetController::class, 'getCabinetByName'])->name('cabinets.byName');
+Route::get('/cabinets/address/{address}', [CabinetController::class, 'getCabinetByAdress'])->name('cabinets.byAddress');
+

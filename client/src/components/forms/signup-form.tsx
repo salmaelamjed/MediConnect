@@ -196,24 +196,24 @@ const MultiStepRegisterForm = ({
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="flex flex-col gap-6">
                 {/* Step Indicator */}
-                <div className="mb-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-xs font-semibold tracking-wide text-blue-600 uppercase">Step {step} of 3</h2>
-                    <div className="flex space-x-1">
-                      {[1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            "h-1.5 rounded-full transition-all duration-300",
-                            step >= i ? "bg-blue-600 w-6" : "bg-gray-200 w-2"
-                          )}
-                        />
-                      ))}
-                    </div>
+               <div className="sticky top-0 z-10 pt-4 pb-2 bg-white border-b border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xs font-semibold tracking-wide text-blue-600 uppercase">Step {step} of 4</h2>
+                  <div className="flex space-x-1">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "h-1.5 rounded-full transition-all duration-300",
+                          step >= i ? "bg-blue-600 w-6" : "bg-gray-200 w-2"
+                        )}
+                      />
+                    ))}
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-900">{stepTitles[step - 1]}</h1>
-                  <p className="mt-1 text-gray-500">{stepDescriptions[step - 1]}</p>
                 </div>
+                <h1 className="text-2xl font-bold text-gray-900">{stepTitles[step - 1]}</h1>
+                <p className="mt-1 text-gray-500">{stepDescriptions[step - 1]}</p>
+              </div>
 
                 {/* Form Fields */}
                 <div className="space-y-4 animate-slide-in">

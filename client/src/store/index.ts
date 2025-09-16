@@ -12,8 +12,8 @@ import {
 import storage from "redux-persist/lib/storage";
 import auth from "./auth/authSlice";
 import forgotPassword from "./auth/forgotPasswordSlice "; 
-
-
+import specialities from './specialities/specialitiesSlice'
+import cabinets from './cabinets/cabinetsSlice'
 
 const authPersistConfig = {
   key: "auth",
@@ -24,6 +24,8 @@ const authPersistConfig = {
 const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, auth),
   forgotPassword,
+  specialities,
+  cabinets,
 });
 
 const store = configureStore({

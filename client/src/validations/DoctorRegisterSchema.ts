@@ -37,7 +37,7 @@ const doctorRegisterSchema = z
       message: "Cabinet option must be 'new' or 'existing'.",
     }),
     cabinet_id: z.number().optional(),
-    cabinet_name: z.string().optional(),
+    cabinet_name: z.string().min(4,{message:"cabinet name is required"}),
     cabinet_address: z.string().optional(),
     cabinet_city: z.string().optional(),
     cabinet_postal_code: z.string().optional(),
