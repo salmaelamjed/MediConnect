@@ -82,7 +82,8 @@ const router = createBrowserRouter([
       {path:"/reset_password",element:<ResetPasswordForm/>},
       {path:"/email_verification",element:<EmailVerificationModal/>},
       {path:"/profile",element:<PatientProfile/>},
-      {path:"/services",element:<OurServices/>}
+      {path:"/services",element:<OurServices/>},
+     {path:"/doctors/speciality/:id",element:<h1>doctor speciality</h1>}
     ],
   },
   // Doctor routes 
