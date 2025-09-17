@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 use App\Mail\VerificationCode;
 use App\Models\Cabinet;
 use App\Models\CabinetSpeciality;
-use App\Models\Speciality; 
+use App\Models\Speciality;
 
 class AuthController extends Controller
 {
@@ -426,11 +426,18 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Check if the user is a doctor and owns a cabinet
+        $isCabinetOwner = false;
+        if ($role === 'doctor') {
+            $isCabinetOwner = Cabinet::where('owner_id', $user->id)->exists();
+        }
+
         return response()->json([
             'message' => 'Login successful',
             'user' => $user->only(['id', 'email', 'role']),
             'token' => $token,
             'role' => $role,
+            'is_cabinet_owner' => $isCabinetOwner,
         ], 200);
     }
 

@@ -16,6 +16,7 @@ type TResponse = {
   };
   token: string;
   role: string;
+  is_cabinet_owner:boolean;
 };
 
 const actAuthLogin = createAsyncThunk(

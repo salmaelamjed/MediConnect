@@ -14,7 +14,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const getNavItems = (role: "admin" | "doctor"): NavItem[] => {
+const getNavItems = (role: "admin" | "doctor"|"owner"): NavItem[] => {
   if (role === "admin") {
     return [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -25,6 +25,13 @@ const getNavItems = (role: "admin" | "doctor"): NavItem[] => {
       { title: "Reports",   href: "/admin/reports", icon: Package },
       { title: "Settings", href: "/admin/settings", icon: Package },
     ];
+  }
+  if(role==="owner"){
+     return[
+    { title: "Dashboard", href: "/owner", icon: LayoutDashboard },
+    { title: "Patients", href: "/doctor/patients", icon: User },
+    { title: "Planning", href: "/doctor/planning", icon: Calendar },
+     ];
   }
   return [
     { title: "Dashboard", href: "/doctor", icon: LayoutDashboard },
@@ -44,7 +51,7 @@ interface DashboardSidebarProps {
   toggleSidebar: () => void;
   isCollapsed: boolean;
   toggleCollapse: () => void;
-  role: "admin" | "doctor";
+  role: "admin" | "doctor" | "owner";
 }
 
 export function DashboardSidebar({ isOpen, toggleSidebar, isCollapsed, toggleCollapse, role }: DashboardSidebarProps) {

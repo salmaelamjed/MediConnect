@@ -32,7 +32,7 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
   const onSubmit = async (data: LoginInputs) => {
     try {
       const response = await dispatch(actAuthLogin(data)).unwrap();
-      const { token, role } = response;
+      const { token, role, is_cabinet_owner } = response;
 
       if (token) {
         localStorage.setItem("accessToken", token);
@@ -41,9 +41,17 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
       toast.success("Login successful!");
 
       // Role-based redirection
-      if (role === "admin") navigate("/admin");
-      else if (role === "doctor") navigate("/doctor");
-      else navigate("/");
+      if (role === "admin") {
+        navigate("/admin");
+      } else if (role === "doctor") {
+        if (is_cabinet_owner) {
+          navigate("/owner"); // Redirect to owner dashboard if doctor is an owner
+        } else {
+          navigate("/doctor");
+        }
+      } else {
+        navigate("/");
+      }
 
       reset();
     } catch (err: unknown) {
