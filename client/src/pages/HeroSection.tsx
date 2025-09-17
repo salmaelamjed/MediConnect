@@ -6,6 +6,7 @@ import  ContactSection from "./Contact-section";
 import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 // import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 // import { useState } from "react";
 export default function HeroSection() {
@@ -207,10 +208,10 @@ const features = [
 
           {/* Explore All Services Button */}
           <div className="text-center">
-            <button className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-blue-500 transition-all border border-blue-500 rounded-full group hover:bg-primary hover:text-white">
+            <Link to={'/services'} className="w-full sm:w-auto inline-flex items-center justify-center px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-blue-500 transition-all border border-blue-500 rounded-full group hover:bg-primary hover:text-white">
               Explore All Services
               <ArrowRight className="w-4 h-4 ml-2 transition-transform sm:w-5 sm:h-5 group-hover:translate-x-1" />
-            </button>
+            </Link>
           </div>
         </div>
       </section>

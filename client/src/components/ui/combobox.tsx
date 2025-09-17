@@ -67,12 +67,6 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       dispatch(actGetAllActive())
     }, [dispatch])
 
-    // Debug logs - vous pouvez les retirer après le debug
-    console.log('Specialties data:', specialties)
-    console.log('Is array:', Array.isArray(specialties))
-    console.log('Loading state:', loading)
-    console.log('Redux error:', reduxError)
-
     // Vérification de sécurité : s'assurer que specialties est un tableau
     const safeSpecialties = Array.isArray(specialties) ? specialties : []
     
@@ -88,7 +82,6 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       [safeSpecialties]
     )
 
-    console.log('Formatted specialties:', formattedSpecialties)
 
     return (
       <div className="relative">

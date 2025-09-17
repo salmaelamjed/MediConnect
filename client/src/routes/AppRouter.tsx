@@ -30,7 +30,7 @@ const AdminLayout=lazy(()=>import("@/layouts/AdminLayout"));
 const MultiStepRegisterForm=lazy(()=>import("@/components/forms/signup-form"));
 const EmailVerificationModal=lazy(()=>import("@/components/forms/email-verification"))
 const StaffList=lazy(()=>import("@/pages/dashboard/doctor/staff-list"));
-
+const OurServices=lazy(()=>import("@/pages/our-services"))
 // Custom Loading component
 const Loading = () => (
   <div className="flex items-center justify-center min-h-screen bg-background">
@@ -72,6 +72,7 @@ const router = createBrowserRouter([
       {path:"/reset_password",element:<ResetPasswordForm/>},
       {path:"/email_verification",element:<EmailVerificationModal/>},
       {path:"/profile",element:<PatientProfile/>},
+      {path:"/services",element:<OurServices/>}
     ],
   },
   // Doctor routes 

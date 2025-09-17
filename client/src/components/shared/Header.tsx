@@ -130,19 +130,13 @@ const handleLogout = () => {
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center space-x-2">
-              <Button 
-                asChild 
-                variant="outline"
-                className="px-4 py-2 text-sm font-medium rounded-full md:text-base text-primary border-primary hover:bg-primary/5"
-              >
-                <Link to="/login">
+            <div className="flex items-center space-x-5">
+                <Link to="/login" className="text-xl font-medium text-primary hover:text-secondary">
                   Sign in
                 </Link>
-              </Button>
               <Button 
                 asChild 
-                className="px-4 py-2 text-sm font-medium text-white transition-all duration-300 rounded-full shadow-lg md:text-base bg-primary hover:bg-primary/90"
+                className="px-6 py-4 text-xl font-medium text-white transition-all duration-300 rounded-md shadow-lg md:text-base bg-primary hover:bg-primary/90"
               >
                 <Link to="/register">
                   Register
