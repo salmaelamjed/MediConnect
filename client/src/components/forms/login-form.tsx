@@ -36,6 +36,8 @@ export default function LoginForm({ className, ...props }: React.ComponentProps<
 
       if (token) {
         localStorage.setItem("accessToken", token);
+        localStorage.setItem("role", role);
+        localStorage.setItem("is_cabinet_owner", JSON.stringify(is_cabinet_owner));
       }
 
       toast.success("Login successful!");

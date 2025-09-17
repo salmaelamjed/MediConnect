@@ -22,7 +22,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
 import { toast } from "sonner"
 import { useAppDispatch } from "@/store/hooks"
 import { actAuthLogout } from "@/store/auth/authSlice"
@@ -36,11 +35,23 @@ export function DashboardHeader({ toggleSidebar }: DashboardHeaderProps) {
   const navigate = useNavigate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-   const role=localStorage.getItem("role");
+  const role = localStorage.getItem("role");
+  const isCabinetOwner = JSON.parse(localStorage.getItem("is_cabinet_owner") || "false");
+
+  const getDashboardLink = () => {
+    if (role === "admin") return "/admin";
+    if (role === "doctor" && isCabinetOwner) return "/owner";
+    if (role === "doctor") return "/doctor";
+    return "/";
+  };
+
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
       await dispatch(actAuthLogout()).unwrap()
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("role");
+      localStorage.removeItem("is_cabinet_owner"); // Nettoyer is_cabinet_owner
       toast.success("You have logged out successfully!", {
         duration: 1000
       })
@@ -59,8 +70,8 @@ export function DashboardHeader({ toggleSidebar }: DashboardHeaderProps) {
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggleSidebar} aria-label="Toggle sidebar">
         <Menu className="w-5 h-5" />
       </Button>
-      <Link to={role==="doctor" ? "/doctor" : "/admin"} >
-        <img src={logo} alt="MediConnect" className="h-16 "/>
+      <Link to={getDashboardLink()}>
+        <img src={logo} alt="MediConnect" className="h-16" />
       </Link>
       <div className="flex items-center gap-4 ml-auto">
         <DropdownMenu>

@@ -2,7 +2,7 @@
 const OwnerOverView = () => {
   return (
     <div>
-      OwnerOverView pages
+      owner overviews page 
     </div>
   )
 }

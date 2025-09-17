@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react";
-import {  ChevronLeft, ChevronRight, CreditCard, Package, Settings, Store, LayoutDashboard, User, Calendar, Stethoscope, Clock, BarChart3, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, CreditCard, Package, Settings, Store, LayoutDashboard, User, Calendar, Stethoscope, Clock, BarChart3, Users } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,25 +14,29 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const getNavItems = (role: "admin" | "doctor"|"owner"): NavItem[] => {
+const getNavItems = (role: "admin" | "doctor" | "owner"): NavItem[] => {
   if (role === "admin") {
     return [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
-      { title: "Doctors ", href: "/admin/doctors", icon: Users },
+      { title: "Doctors", href: "/admin/doctors", icon: Users },
       { title: "Patients", href: "/admin/patients", icon: Store },
       { title: "Appointments", href: "/admin/appointments", icon: Package },
-      { title: "Specialties ", href: "/admin/specialties", icon: CreditCard },
-      { title: "Reports",   href: "/admin/reports", icon: Package },
+      { title: "Specialties", href: "/admin/specialties", icon: CreditCard },
+      { title: "Reports", href: "/admin/reports", icon: Package },
       { title: "Settings", href: "/admin/settings", icon: Package },
     ];
   }
-  if(role==="owner"){
-     return[
+if (role === "owner") {
+  return [
     { title: "Dashboard", href: "/owner", icon: LayoutDashboard },
-    { title: "Patients", href: "/doctor/patients", icon: User },
-    { title: "Planning", href: "/doctor/planning", icon: Calendar },
-     ];
-  }
+    { title: "Patients", href: "/owner/patients", icon: User },
+    { title: "Planning", href: "/owner/planning", icon: Calendar },
+    { title: "Staff List", href: "/owner/staff_list", icon: Users }, 
+    { title: "Specialties", href: "/owner/specialties", icon: CreditCard },
+    { title: "Reports", href: "/owner/reports", icon: BarChart3 }, 
+    { title: "Cabinet Management", href: "/owner/settings", icon: Settings },
+  ];
+}
   return [
     { title: "Dashboard", href: "/doctor", icon: LayoutDashboard },
     { title: "Patients", href: "/doctor/patients", icon: User },
@@ -42,7 +46,6 @@ const getNavItems = (role: "admin" | "doctor"|"owner"): NavItem[] => {
     { title: "Staff List", href: "/doctor/staff_list", icon: Users },
     { title: "Reports", href: "/doctor/reports", icon: BarChart3 },
     { title: "Settings", href: "/doctor/settings", icon: Settings },
-
   ];
 };
 
@@ -57,12 +60,12 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ isOpen, toggleSidebar, isCollapsed, toggleCollapse, role }: DashboardSidebarProps) {
   const { pathname } = useLocation();
   const navItems = getNavItems(role);
-  const {user}=useAppSelector((state)=>state.auth);
-  
+  const { user } = useAppSelector((state) => state.auth);
+
   // Définir le lien actif par défaut (premier lien)
   const defaultActiveHref = navItems[0]?.href;
   const isActive = (href: string) => pathname === href || (pathname === defaultActiveHref && href === defaultActiveHref);
-  
+
   return (
     <>
       {/* Sidebar for large screens */}

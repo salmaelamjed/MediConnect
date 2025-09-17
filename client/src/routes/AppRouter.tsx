@@ -1,36 +1,46 @@
-import AdminDashboard from "@/pages/dashboard/admin-dashboard";
-import DoctorsManagement from "@/pages/dashboard/admin/doctors-management";
-import AppointmentsManagement from "@/pages/dashboard/admin/meetings";
-import AdminOverview from "@/pages/dashboard/admin/overview-page";
-import AdminPatientsManagement from "@/pages/dashboard/admin/patients-management";
-import AdminReports from "@/pages/dashboard/admin/reports";
-import AdminSettings from "@/pages/dashboard/admin/settings";
-import SpecialtiesManagement from "@/pages/dashboard/admin/specialties";
-import DoctorDashboard from "@/pages/dashboard/doctor-dashboard";
-import Calendar from "@/pages/dashboard/doctor/Calendar";
-import ConsultationsPage from "@/pages/dashboard/doctor/consultations-page";
-import PatientsManagement from "@/pages/dashboard/doctor/management-patient";
-import DoctorOverView from "@/pages/dashboard/doctor/overview-page";
-import PlanningPage from "@/pages/dashboard/doctor/planning-page";
-import ReportsPage from "@/pages/dashboard/doctor/reports-page";
-import Settings from "@/pages/dashboard/doctor/settings";
-import WaitingRoom from "@/pages/dashboard/doctor/waiting-room";
 import { StethoscopeIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
-import {  createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
+// Lazy-loaded components
+const OwnerLayout = lazy(() => import("@/layouts/OwnerLayout"));
+const AdminDashboard = lazy(() => import("@/pages/dashboard/admin-dashboard"));
+const DoctorsManagement = lazy(() => import("@/pages/dashboard/admin/doctors-management"));
+const AppointmentsManagement = lazy(() => import("@/pages/dashboard/admin/meetings"));
+const AdminOverview = lazy(() => import("@/pages/dashboard/admin/overview-page"));
+const AdminPatientsManagement = lazy(() => import("@/pages/dashboard/admin/patients-management"));
+const AdminReports = lazy(() => import("@/pages/dashboard/admin/reports"));
+const AdminSettings = lazy(() => import("@/pages/dashboard/admin/settings"));
+const SpecialtiesManagement = lazy(() => import("@/pages/dashboard/admin/specialties"));
+const DoctorDashboard = lazy(() => import("@/pages/dashboard/doctor-dashboard"));
+const Calendar = lazy(() => import("@/pages/dashboard/doctor/Calendar"));
+const ConsultationsPage = lazy(() => import("@/pages/dashboard/doctor/consultations-page"));
+const PatientsManagement = lazy(() => import("@/pages/dashboard/doctor/management-patient"));
+const DoctorOverView = lazy(() => import("@/pages/dashboard/doctor/overview-page"));
+const PlanningPage = lazy(() => import("@/pages/dashboard/doctor/planning-page"));
+const ReportsPage = lazy(() => import("@/pages/dashboard/doctor/reports-page"));
+const Settings = lazy(() => import("@/pages/dashboard/doctor/settings"));
+const WaitingRoom = lazy(() => import("@/pages/dashboard/doctor/waiting-room"));
+const OwnerDashboard = lazy(() => import("@/pages/dashboard/owner-dashboard"));
+const CabinetSettings = lazy(() => import("@/pages/dashboard/owner/cabinet-settings"));
+const OwnerOverView = lazy(() => import("@/pages/dashboard/owner/over-views"));
+const OwnerPatientsManagement = lazy(() => import("@/pages/dashboard/owner/owner-patients"));
+const OwnerPlanning = lazy(() => import("@/pages/dashboard/owner/owner-planning"));
+const OwnerReports = lazy(() => import("@/pages/dashboard/owner/owner-reports"));
+const OwnerSpecialitiesMagement = lazy(() => import("@/pages/dashboard/owner/owner-specialities"));
+const OwnerStaffList = lazy(() => import("@/pages/dashboard/owner/staffList"));
 const App = lazy(() => import("@/App"));
 const LoginForm = lazy(() => import("@/components/forms/login-form"));
 const SignupDoctorForm = lazy(() => import("@/components/forms/signupDoctor-form"));
 const DefaultLayout = lazy(() => import("@/layouts/DefaultLayout"));
-const ResetPasswordForm=lazy(()=>import("@/components/forms/resetPwd-form"))
+const ResetPasswordForm = lazy(() => import("@/components/forms/resetPwd-form"));
 const NotFound = lazy(() => import("@/pages/not-found"));
-const PatientProfile=lazy(()=>import("@/pages/patient-profile"));
-const AdminLayout=lazy(()=>import("@/layouts/AdminLayout"));
-const MultiStepRegisterForm=lazy(()=>import("@/components/forms/signup-form"));
-const EmailVerificationModal=lazy(()=>import("@/components/forms/email-verification"))
-const StaffList=lazy(()=>import("@/pages/dashboard/doctor/staff-list"));
-const OurServices=lazy(()=>import("@/pages/our-services"))
+const PatientProfile = lazy(() => import("@/pages/patient-profile"));
+const AdminLayout = lazy(() => import("@/layouts/AdminLayout"));
+const MultiStepRegisterForm = lazy(() => import("@/components/forms/signup-form"));
+const EmailVerificationModal = lazy(() => import("@/components/forms/email-verification"));
+const StaffList = lazy(() => import("@/pages/dashboard/doctor/staff-list"));
+const OurServices = lazy(() => import("@/pages/our-services"));
 // Custom Loading component
 const Loading = () => (
   <div className="flex items-center justify-center min-h-screen bg-background">
@@ -147,6 +157,40 @@ const router = createBrowserRouter([
       },
     ],
   },
+  {
+    path: "/owner",
+    element: (
+      // <ProtectedRoute>
+        <Suspense fallback={<Loading />}>
+          <OwnerLayout />
+        </Suspense>
+      //</ProtectedRoute>
+    ),
+    errorElement: (
+      <Suspense fallback={<Loading />}>
+        <NotFound />
+      </Suspense>
+    ),
+    children: [
+      {
+        path: "",
+        element: (
+          <Suspense fallback={<Loading />}>
+             <OwnerDashboard /> 
+          </Suspense>
+        ),
+        children: [
+          { index: true, element: <OwnerOverView /> },
+          { path: "patients", element:<OwnerPatientsManagement/> },
+          { path: "planning", element: <OwnerPlanning /> },
+          { path: "staff_list", element: <OwnerStaffList /> },
+          { path: "specialties", element: <OwnerSpecialitiesMagement/> },
+          { path: "reports", element: <OwnerReports/> },
+          { path: "settings", element: <CabinetSettings /> },
+        ],
+      },
+    ],
+  }
 
 
   // Unauthorized page

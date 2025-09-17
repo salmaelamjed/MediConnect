@@ -1,5 +1,5 @@
 
-const StaffList = () => {
+const OwnerStaffList = () => {
   return (
     <div>
       StaffList owner page 
@@ -7,4 +7,4 @@ const StaffList = () => {
   )
 }
 
-export default StaffList
+export default OwnerStaffList
