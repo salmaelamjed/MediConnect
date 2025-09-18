@@ -10,37 +10,34 @@ import { Link } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { MedicalIcon } from "@/Util/iconMapping";
-import { actGetAllActive } from "@/store/specialities/act/actGetAllActive";
+import { actGetAllCabinetsActive } from "@/store/cabinets/act/actGetAllCabinetsActive";
+import type { Cabinet } from "@/types/cabinet";
 
-interface ISpeciality {
-  id: number;
-  name: string;
-  description: string;
-  icon: string;
-  is_active: boolean;
-}
+
 
 export default function HeroSection() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState<ISpeciality[]>([]);
+  const [suggestions, setSuggestions] = useState<Cabinet[]>([]);
   const navigate = useNavigate();
-  const { records: medicalServices } = useAppSelector((state) => state.specialities);
-  
+  const{cabinets,loading}=useAppSelector((state)=>state.cabinets)
   const dispatch = useAppDispatch()
 
-  useEffect(() => {
-    dispatch(actGetAllActive())
-    if (searchTerm) {
-      const filtered = medicalServices.filter((service) =>
-        service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchTerm.toLowerCase())
-      ); // Supprimer slice(0, 5) pour inclure tous les résultats
-      setSuggestions(filtered);
-    } else {
-      setSuggestions([]);
-    }
-  }, [searchTerm, medicalServices, dispatch]);
+useEffect(() => {
+  dispatch(actGetAllCabinetsActive());
+}, [dispatch]);
+
+useEffect(() => {
+  if (loading) return;
+  if (searchTerm) {
+    const filtered = cabinets.filter((cabinet) =>
+      (cabinet.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false) ||
+      (cabinet.description?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false)
+    );
+    setSuggestions(filtered);
+  } else {
+    setSuggestions([]);
+  }
+}, [searchTerm, cabinets, loading]);
 
   const handleSearch = () => {
     if (searchTerm.trim()) {
@@ -48,10 +45,10 @@ export default function HeroSection() {
     }
   };
 
-  const handleSuggestionClick = (service: ISpeciality) => {
-    setSearchTerm(service.name);
+  const handleSuggestionClick = (cabinet: Cabinet) => {
+    setSearchTerm(cabinet.name);
     setSuggestions([]);
-    navigate(`/doctors/speciality/${service.id}`);
+    navigate(`/cabinets/${cabinet.id}`);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -199,8 +196,9 @@ export default function HeroSection() {
                       role="button"
                       aria-label={`Select ${suggestion.name}`}
                     >
-                      <MedicalIcon iconName={suggestion.icon} size={24} variant="primary" />
+                      <img src={suggestion.image} alt="cabinet image" />
                       <span className="truncate">{suggestion.name}</span>
+                      <span className="text-emerald-500">{suggestion.address}</span>
                     </div>
                   ))}
                 </div>

@@ -1,3 +1,4 @@
+import SearchResults from "@/pages/search-results";
 import { StethoscopeIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -83,7 +84,8 @@ const router = createBrowserRouter([
       {path:"/email_verification",element:<EmailVerificationModal/>},
       {path:"/profile",element:<PatientProfile/>},
       {path:"/services",element:<OurServices/>},
-     {path:"/doctors/speciality/:id",element:<h1>doctor speciality</h1>}
+     {path:"/doctors/speciality/:id",element:<h1>doctor speciality</h1>},
+     {path:"/search",element:<SearchResults/>}
     ],
   },
   // Doctor routes 
