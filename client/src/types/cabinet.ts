@@ -3,7 +3,7 @@ export interface Cabinet {
   owner_id: number;
   name: string;
   description: string | null;
-  image: string | null;
+  image: string ;
   address: string;
   city: string;
   postal_code: string;
