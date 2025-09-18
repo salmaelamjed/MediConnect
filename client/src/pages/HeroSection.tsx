@@ -2,21 +2,67 @@
 import { Brain, Bone, Baby, ArrowRight, Check } from "lucide-react"
 import { Star, Quote } from "lucide-react";
 import { Facebook, Instagram, Twitter, Users, Clock } from "lucide-react"
-import  ContactSection from "./Contact-section";
+import ContactSection from "./Contact-section";
 import { Search } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
-// import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-// import { useState } from "react";
-export default function HeroSection() {
-  //  const [open, setOpen] = useState(false);
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { MedicalIcon } from "@/Util/iconMapping";
+import { actGetAllActive } from "@/store/specialities/act/actGetAllActive";
 
-  // Toggle dialog open state
-  // const toggleDialog = () => setOpen(!open);
-const features = [
+interface ISpeciality {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  is_active: boolean;
+}
+
+export default function HeroSection() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [suggestions, setSuggestions] = useState<ISpeciality[]>([]);
+  const navigate = useNavigate();
+  const { records: medicalServices } = useAppSelector((state) => state.specialities);
+  
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    dispatch(actGetAllActive())
+    if (searchTerm) {
+      const filtered = medicalServices.filter((service) =>
+        service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        service.description.toLowerCase().includes(searchTerm.toLowerCase())
+      ); // Supprimer slice(0, 5) pour inclure tous les résultats
+      setSuggestions(filtered);
+    } else {
+      setSuggestions([]);
+    }
+  }, [searchTerm, medicalServices, dispatch]);
+
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
+    }
+  };
+
+  const handleSuggestionClick = (service: ISpeciality) => {
+    setSearchTerm(service.name);
+    setSuggestions([]);
+    navigate(`/doctors/speciality/${service.id}`);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchTerm.trim()) {
+      handleSearch();
+    }
+  };
+
+  const features = [
     "Symptom Checker",
-    "Chronic Condition Monitoring", 
+    "Chronic Condition Monitoring",
     "Health Risk Assessment"
   ];
   const testimonials = [
@@ -45,100 +91,125 @@ const features = [
       text: "Le système de vérification des symptômes m'a aidé à comprendre mes problèmes de santé. L'équipe est à l'écoute et très compétente."
     }
   ];
- const doctors = [
-  {
-    id: 1,
-    name: "Dr. Sarah Johnson",
-    specialty: "Cardiologist",
-    description: "Specialized in heart disease prevention and treatment with over 15 years of experience.",
-    image: "https://i.pinimg.com/1200x/6c/59/95/6c599523460f54ddeba81f3cd689ae04.jpg",
-    experience: "15+ years",
-    patients: "2000+",
-    social: {
-      facebook: "#",
-      instagram: "#",
-      twitter: "#",
+  const doctors = [
+    {
+      id: 1,
+      name: "Dr. Sarah Johnson",
+      specialty: "Cardiologist",
+      description: "Specialized in heart disease prevention and treatment with over 15 years of experience.",
+      image: "https://i.pinimg.com/1200x/6c/59/95/6c599523460f54ddeba81f3cd689ae04.jpg",
+      experience: "15+ years",
+      patients: "2000+",
+      social: {
+        facebook: "#",
+        instagram: "#",
+        twitter: "#",
+      },
     },
-  },
-  {
-    id: 2,
-    name: "Dr. Michael Chen",
-    specialty: "Neurologist",
-    description: "Expert in neurological disorders and brain health, committed to innovative treatments.",
-    image: "https://i.pinimg.com/736x/82/bb/2a/82bb2af56b3312ddc19a9b42f88df93b.jpg",
-    experience: "12+ years",
-    patients: "1500+",
-    social: {
-      facebook: "#",
-      instagram: "#",
-      twitter: "#",
+    {
+      id: 2,
+      name: "Dr. Michael Chen",
+      specialty: "Neurologist",
+      description: "Expert in neurological disorders and brain health, committed to innovative treatments.",
+      image: "https://i.pinimg.com/736x/82/bb/2a/82bb2af56b3312ddc19a9b42f88df93b.jpg",
+      experience: "12+ years",
+      patients: "1500+",
+      social: {
+        facebook: "#",
+        instagram: "#",
+        twitter: "#",
+      },
     },
-  },
-  {
-    id: 3,
-    name: "Dr. Emily Rodriguez",
-    specialty: "Pediatrician",
-    description: "Dedicated to children's health and wellness with a gentle, caring approach.",
-    image: "https://i.pinimg.com/1200x/52/f8/4d/52f84d4410a27d10d74a75794ffb3ad7.jpg",
-    experience: "10+ years",
-    patients: "3000+",
-    social: {
-      facebook: "#",
-      instagram: "#",
-      twitter: "#",
+    {
+      id: 3,
+      name: "Dr. Emily Rodriguez",
+      specialty: "Pediatrician",
+      description: "Dedicated to children's health and wellness with a gentle, caring approach.",
+      image: "https://i.pinimg.com/1200x/52/f8/4d/52f84d4410a27d10d74a75794ffb3ad7.jpg",
+      experience: "10+ years",
+      patients: "3000+",
+      social: {
+        facebook: "#",
+        instagram: "#",
+        twitter: "#",
+      },
     },
-  },
-]
+  ];
 
   return (
     <div className="min-h-screen bg-white">
-    
       {/* Hero Section */}
-      <section className="relative bg-center bg-cover sm:py-12 md:py-16 lg:py:20 max-h-[600px] border-rounded-full"
-  style={{
-    backgroundImage: `url(https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg)`,
-    backgroundPosition: 'right',
-  }}>
-     {/* Overlay for better text readability */}
-  <div className="absolute inset-0 opacity-50 bg-black/75"></div>
+      <section
+        className="relative min-h-[700px] overflow-hidden bg-center bg-cover rounded-md sm:py-12 md:py-16 lg:py-20"
+        style={{
+          backgroundImage: `url(https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg)`,
+          backgroundPosition: 'right',
+        }}
+      >
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 opacity-50 bg-black/75"></div>
 
-     
+        {/* Main Content */}
+        <div className="container relative z-10 flex flex-col items-center justify-center max-h-[500px] px-4 py-20 mx-auto text-center">
+          <div className="max-w-4xl mx-auto space-y-8">
+            {/* Main Heading */}
+            <div className="space-y-4">
+              <h1 className="text-5xl font-bold text-white md:text-6xl lg:text-7xl text-balance">
+                Inspiring healthier{" "}
+                <span className="inline-block px-4 py-2 rounded-lg bg-white/20">
+                  Tomorrows, Today!
+                </span>
+              </h1>
+            </div>
 
-      {/* Main Content */}
-      <div className="container relative z-10 flex flex-col items-center justify-center max-h-[500px] px-4 py-20 mx-auto text-center ">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Main Heading */}
-          <div className="space-y-4">
-            <h1 className="text-5xl font-bold text-white md:text-6xl lg:text-7xl text-balance">
-              Inspiring healthier{" "}
-              <span className="inline-block px-4 py-2 ">
-                Tomorrows, Today!
-              </span>
-            </h1>
-          </div>
-
-          {/* Search Bar */}
-          <div className="w-full max-w-2xl mx-auto">
-            <div className="flex flex-col gap-3 p-2 border bg-white/10 sm:flex-row backdrop-blur-sm rounded-xl border-white/20">
-              <div className="relative flex-1">
-                <Search className="absolute w-5 h-5 transform -translate-y-1/2 left-4 top-1/2 text-white/70" />
-                <Input
-                  type="text"
-                  placeholder="Search for medical clinic , doctors , services ..."
-                  className="h-12 pl-12 text-3xl font-medium text-white bg-white/20 border-white/30 placeholder:text-white/70"
-                />
+            {/* Search Bar with Suggestions */}
+            <div className="relative w-full max-w-2xl mx-auto">
+              <div className="flex flex-col gap-3 p-2 border bg-white/10 sm:flex-row backdrop-blur-sm rounded-xl border-white/20">
+                <div className="relative flex-1">
+                  <Search className="absolute w-5 h-5 transform -translate-y-1/2 left-4 top-1/2 text-white/70" />
+                  <Input
+                    type="text"
+                    placeholder="Search for medical clinic, doctors, services..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="h-12 pl-12 text-3xl font-medium text-white bg-white/20 border-white/30 placeholder:text-white/70 focus:outline-none focus:ring-2 focus:ring-white"
+                    aria-label="Search medical services, clinics, or doctors"
+                  />
+                </div>
+                <Button
+                  size="lg"
+                  className="h-12 px-8 font-semibold text-white text-md bg-secondary hover:bg-secondary/90"
+                  onClick={handleSearch}
+                >
+                  Rechercher
+                </Button>
               </div>
-              <Button
-                size="lg"
-                className="h-12 px-8 font-semibold text-white text-md bg-secondary hover:bg-secondary/90"
-              >
-                Rechercher
-              </Button>
+
+              {/* Suggestions Dropdown (YouTube-style) with Scroll */}
+              {suggestions.length > 0 && (
+                <div className="absolute left-0 z-20 w-full mt-1 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm" style={{ maxHeight: '240px' }}>
+                  {suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="flex items-center gap-3 p-2 text-lg cursor-pointer hover:bg-gray-100 text-foreground"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSuggestionClick(suggestion)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Select ${suggestion.name}`}
+                    >
+                      <MedicalIcon iconName={suggestion.icon} size={24} variant="primary" />
+                      <span className="truncate">{suggestion.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+
       {/* Services Section */}
       <section className="py-8 bg-white sm:py-12 md:py-16 lg:py-20 xl:py-24">
         <div className="container px-4 mx-auto sm:px-6 lg:px-8 xl:px-12">
