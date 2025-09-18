@@ -2,12 +2,12 @@ export interface Cabinet {
   id: number;
   owner_id: number;
   name: string;
-  description: string;
-  image: string;
+  description: string | null;
+  image: string | null;
   address: string;
   city: string;
   postal_code: string;
-  email: string;
+  email: string | null;
   opening_time: string;
   closing_time: string;
   working_days: (
@@ -24,6 +24,9 @@ export interface Cabinet {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  owner_name: string | null;
+  owner_email: string | null;
+  specialities: string | null;
 }
 
 export interface CabinetsState {

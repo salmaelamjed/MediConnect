@@ -141,7 +141,7 @@ class AuthController extends Controller
                             'owner_id' => $user->id,
                             'name' => $request->cabinet_name,
                             'description' => $request->cabinet_description,
-                            'image' => "https://ui-avatars.com/api/?name=" . urlencode($request->cabinet_name),
+                            'image' => "https://i.pinimg.com/1200x/c6/3e/4b/c63e4baabab225b16b85b9e7bcc05069.jpg",
                             'address' => $request->cabinet_address,
                             'city' => $request->cabinet_city,
                             'postal_code' => $request->cabinet_postal_code,

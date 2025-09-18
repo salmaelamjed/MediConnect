@@ -429,6 +429,7 @@ export default function SearchResults() {
                       <h3 className="mb-2 text-xl font-bold text-gray-900">
                         {cabinet.name || "Cabinet sans nom"}
                       </h3>
+                      <h4>Founder by : {cabinet.owner_name}</h4>
 
                       <div className="mb-3 space-y-2">
                         <div className="flex items-start gap-2 text-sm text-gray-600">
@@ -449,13 +450,11 @@ export default function SearchResults() {
                             {cabinet.address || "Adresse non disponible"}
                           </span>
                         </div>
-
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="font-medium text-gray-700">Coordonnées:</span>
-                          <span className="px-2 py-1 font-mono text-xs text-blue-600 rounded bg-blue-50">
-                            {formatCoordinates(cabinet.latitude, cabinet.longitude)}
-                          </span>
-                        </div>
+                       <div className="flex justify-between">
+                        {cabinet.specialities && (
+                          <span className="px-4 font-bold text-white rounded-full bg-primary">{cabinet.specialities}</span>
+                        )}
+                       </div>
                       </div>
 
                       <p className="mb-4 text-sm text-gray-700 line-clamp-3">
