@@ -1,7 +1,7 @@
 "use client"
 
 import { Menu, X, User, Calendar, Home, Info, Briefcase, Users, BookOpen, LogOut } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import logo from '@/assets/logo.svg'
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { actAuthLogout } from "@/store/auth/authSlice"
 import { toast } from "sonner"
 
@@ -23,8 +31,11 @@ const Header = () => {
   const { user } = useAppSelector((state) => state.auth)
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const token = localStorage.getItem("accessToken")
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
 
   // Effet de scroll pour changer l'apparence du header
   useEffect(() => {
@@ -43,16 +54,26 @@ const Header = () => {
     { name: "Blog", href: "/blog", icon: BookOpen },
   ]
 
-const handleLogout = () => {
-  try {
-    dispatch(actAuthLogout()).unwrap();
-    setIsOpen(false);
-    toast.success("Logged out successfully",{duration:1000})
-  } catch (error) {
-    console.error("Logout failed:", error);
-    toast.error("Failed to log out. Please try again.");
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await dispatch(actAuthLogout()).unwrap()
+      localStorage.removeItem("accessToken")
+      localStorage.removeItem("role")
+      localStorage.removeItem("is_cabinet_owner")
+      toast.success("You have logged out successfully!", {
+        duration: 1000
+      })
+      setIsOpen(false)
+      navigate("/")
+    } catch (error) {
+      console.error("Logout failed:", error)
+      toast.error("Failed to log out. Please try again.")
+    } finally {
+      setIsLoggingOut(false)
+      setDialogOpen(false)
+    }
   }
-};
 
   return (
     <header 
@@ -122,7 +143,7 @@ const handleLogout = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                  <DropdownMenuItem onClick={() => setDialogOpen(true)} className="text-red-600 focus:text-red-600">
                     <LogOut className="w-4 h-4 mr-2" />
                     <span>Se déconnecter</span>
                   </DropdownMenuItem>
@@ -131,9 +152,9 @@ const handleLogout = () => {
             </div>
           ) : (
             <div className="flex items-center space-x-5">
-                <Link to="/login" className="text-xl font-medium text-primary hover:text-secondary">
-                  Sign in
-                </Link>
+              <Link to="/login" className="text-xl font-medium text-primary hover:text-secondary">
+                Sign in
+              </Link>
               <Button 
                 asChild 
                 className="px-6 py-4 text-xl font-medium text-white transition-all duration-300 rounded-md shadow-lg md:text-base bg-primary hover:bg-primary/90"
@@ -251,25 +272,20 @@ const handleLogout = () => {
                           <Calendar className="w-5 h-5 text-gray-500" />
                           <span className="text-base font-medium">Mes Rendez-vous</span>
                         </Link>
+                        <button
+                          onClick={() => setDialogOpen(true)}
+                          className="flex items-center w-full px-3 py-3 space-x-3 text-red-600 transition-all duration-200 rounded-lg hover:bg-red-50"
+                        >
+                          <LogOut className="w-5 h-5 text-red-600" />
+                          <span className="text-base font-medium">Se déconnecter</span>
+                        </button>
                       </div>
                     )}
                   </nav>
 
                   {/* CTA Buttons Section */}
                   <div className="p-4 mt-auto border-t border-gray-100 bg-gray-50">
-                    {token && user ? (
-                      <Button 
-                        variant="outline" 
-                        className="w-full py-3 font-semibold text-red-600 border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300"
-                        onClick={() => {
-                          handleLogout()
-                          setIsOpen(false)
-                        }}
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Se déconnecter
-                      </Button>
-                    ) : (
+                    {!token || !user ? (
                       <div className="space-y-3">
                         <Button 
                           variant="outline" 
@@ -290,13 +306,55 @@ const handleLogout = () => {
                           </Link>
                         </Button>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
             </SheetContent>
           </Sheet>
         </div>
+
+        {/* Logout Confirmation Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Logout</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to log out? You will need to log in again to access your account.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+                disabled={isLoggingOut}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Logging out...
+                  </span>
+                ) : (
+                  "Logout"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </header>
   )
