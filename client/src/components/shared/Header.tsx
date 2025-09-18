@@ -83,24 +83,24 @@ const Header = () => {
           : 'bg-white/80 backdrop-blur-sm'
       } supports-[backdrop-filter]:bg-white/60`}
     >
-      <div className="container flex items-center justify-between h-16 px-4 mx-auto md:h-18 lg:h-20">
+      <div className="container flex items-center justify-between h-12 px-4 mx-auto md:h-18 lg:h-20">
         
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2 shrink-0">
           <img 
             src={logo} 
             alt="MediConnect" 
-            className="w-auto h-16 transition-all duration-300 md:h-10 lg:h-16"
+            className="w-auto h-12 transition-all duration-300 sm:h-14 md:h-10 lg:h-12 xl:h-14"
           />
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="items-center hidden space-x-1 md:flex lg:space-x-2 xl:space-x-4">
+        <nav className="items-center hidden space-x-2 md:flex lg:space-x-3 xl:space-x-4">
           {navigationItems.map((item) => (
-            <Link 
-              key={item.name} 
-              to={item.href} 
-              className="px-3 py-2 text-sm font-medium text-gray-700 transition-all duration-200 rounded-lg lg:text-base hover:text-primary hover:bg-primary/5"
+            <Link
+              key={item.name}
+              to={item.href}
+              className="px-3 py-1.5 md:px-3 md:py-1.5 lg:px-4 lg:py-2 xl:px-5 xl:py-2.5 text-sm lg:text-base xl:text-lg font-medium text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
             >
               {item.name}
             </Link>
@@ -151,169 +151,171 @@ const Header = () => {
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center space-x-5">
-              <Link to="/login" className="text-xl font-medium text-primary hover:text-secondary">
-                Sign in
+          <div className="flex items-center space-x-4 sm:space-x-5">
+            <Link 
+              to="/login" 
+              className="text-base font-medium sm:text-lg md:text-base lg:text-lg xl:text-xl text-primary hover:text-secondary"
+            >
+              Sign in
+            </Link>
+            <Button 
+              asChild 
+              className="px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 lg:px-6 lg:py-3.5 xl:px-8 xl:py-4 text-base sm:text-lg md:text-base lg:text-lg xl:text-xl font-medium text-white transition-all duration-300 rounded-md shadow-lg bg-primary hover:bg-primary/90"
+            >
+              <Link to="/register">
+                Register
               </Link>
-              <Button 
-                asChild 
-                className="px-6 py-4 text-xl font-medium text-white transition-all duration-300 rounded-md shadow-lg md:text-base bg-primary hover:bg-primary/90"
-              >
-                <Link to="/register">
-                  Register
-                </Link>
-              </Button>
-            </div>
+            </Button>
+          </div>
           )}
         </div>
 
-        {/* Mobile Menu Button */}
-        <div className="flex items-center space-x-2 md:hidden">
-          {token && user && (
-            <Avatar className="w-8 h-8 mr-2">
-              <AvatarImage src="https://i.pinimg.com/736x/59/92/db/5992db2c560e19ec9a2ec15c932a5114.jpg" />
-              <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
-                {user.name?.charAt(0) || user.email?.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-          )}
-          
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="w-10 h-10 transition-all duration-200 rounded-lg hover:bg-primary/10"
-              >
-                <div className="relative w-5 h-5">
-                  <Menu className={`absolute transition-all duration-300 ${isOpen ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100'}`} />
-                </div>
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            
-            <SheetContent 
-              side="right" 
-              className="w-full p-0 border-l border-gray-200 sm:max-w-sm"
+      {/* Mobile Menu Button */}
+      <div className="flex items-center space-x-2 sm:space-x-3 md:hidden">
+        {token && user && (
+          <Avatar className="mr-2 w-7 h-7 sm:w-8 sm:h-8">
+            <AvatarImage src="https://i.pinimg.com/736x/59/92/db/5992db2c560e19ec9a2ec15c932a5114.jpg" />
+            <AvatarFallback className="text-xs font-semibold sm:text-sm bg-primary/10 text-primary">
+              {user.name?.charAt(0) || user.email?.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+        )}
+  
+  <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <SheetTrigger asChild>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="transition-all duration-200 rounded-lg w-9 h-9 sm:w-10 sm:h-10 hover:bg-primary/10"
+      >
+        <div className="relative w-4 h-4 sm:w-5 sm:h-5">
+          <Menu className={`absolute transition-all duration-300 ${isOpen ? 'rotate-90 opacity-0' : 'rotate-0 opacity-100'}`} />
+        </div>
+        <span className="sr-only">Toggle menu</span>
+      </Button>
+    </SheetTrigger>
+    
+    <SheetContent 
+      side="right" 
+      className="w-full p-0 border-l border-gray-200 sm:max-w-[20rem] md:max-w-[24rem] lg:max-w-[28rem]"
+    >
+      <div className="flex flex-col h-full">
+        {/* Header du slide */}
+        <SheetHeader className="px-4 py-3 border-b border-gray-100 sm:px-6 sm:py-4 bg-gradient-to-r from-primary/5 to-primary/10">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="flex items-center space-x-2 sm:space-x-3">
+              <img src={logo} alt="MediConnect" className="w-auto h-7 sm:h-8 md:h-9 lg:h-10" />
+              <span className="text-base font-bold text-gray-800 sm:text-lg lg:text-xl">MediConnect</span>
+            </SheetTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setIsOpen(false)}
+              className="rounded-full"
             >
-              <div className="flex flex-col h-full">
-                {/* Header du slide */}
-                <SheetHeader className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-primary/10">
-                  <div className="flex items-center justify-between">
-                    <SheetTitle className="flex items-center space-x-3">
-                      <img src={logo} alt="MediConnect" className="w-auto h-8" />
-                      <span className="text-lg font-bold text-gray-800">MediConnect</span>
-                    </SheetTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => setIsOpen(false)}
-                      className="rounded-full"
-                    >
-                      <X className="w-5 h-5" />
-                    </Button>
-                  </div>
-                </SheetHeader>
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </Button>
+          </div>
+        </SheetHeader>
 
-                <div className="flex flex-col flex-1 overflow-y-auto">
-                  {/* User Info Section for Mobile */}
-                  {token && user && (
-                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="w-12 h-12">
-                          <AvatarImage src="https://i.pinimg.com/736x/59/92/db/5992db2c560e19ec9a2ec15c932a5114.jpg" />
-                          <AvatarFallback className="font-semibold bg-primary/10 text-primary">
-                            {user.name?.charAt(0) || user.email?.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-gray-800">{user.name}</p>
-                          <p className="text-sm text-gray-600">{user.email}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Navigation Links */}
-                  <nav className="flex-1 px-3 py-4">
-                    <div className="space-y-1">
-                      {navigationItems.map((item) => {
-                        const IconComponent = item.icon
-                        return (
-                          <Link
-                            key={item.name}
-                            to={item.href}
-                            className="flex items-center px-3 py-3 space-x-3 text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
-                            onClick={() => setIsOpen(false)}
-                          >
-                            <IconComponent className="w-5 h-5 text-gray-500 transition-colors duration-200" />
-                            <span className="text-base font-medium">{item.name}</span>
-                          </Link>
-                        )
-                      })}
-                    </div>
-
-                    {/* User Actions for Mobile */}
-                    {token && user && (
-                      <div className="pt-6 mt-6 space-y-1 border-t border-gray-200">
-                        <Link
-                          to="/profile"
-                          className="flex items-center px-3 py-3 space-x-3 text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
-                          onClick={() => setIsOpen(false)}
-                        >
-                          <User className="w-5 h-5 text-gray-500" />
-                          <span className="text-base font-medium">Mon Profil</span>
-                        </Link>
-                        <Link
-                          to="/appointments"
-                          className="flex items-center px-3 py-3 space-x-3 text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
-                          onClick={() => setIsOpen(false)}
-                        >
-                          <Calendar className="w-5 h-5 text-gray-500" />
-                          <span className="text-base font-medium">Mes Rendez-vous</span>
-                        </Link>
-                        <button
-                          onClick={() => setDialogOpen(true)}
-                          className="flex items-center w-full px-3 py-3 space-x-3 text-red-600 transition-all duration-200 rounded-lg hover:bg-red-50"
-                        >
-                          <LogOut className="w-5 h-5 text-red-600" />
-                          <span className="text-base font-medium">Se déconnecter</span>
-                        </button>
-                      </div>
-                    )}
-                  </nav>
-
-                  {/* CTA Buttons Section */}
-                  <div className="p-4 mt-auto border-t border-gray-100 bg-gray-50">
-                    {!token || !user ? (
-                      <div className="space-y-3">
-                        <Button 
-                          variant="outline" 
-                          asChild 
-                          className="w-full py-3 font-semibold bg-white border-2 rounded-lg hover:bg-gray-50"
-                        >
-                          <Link to="/login" onClick={() => setIsOpen(false)}>
-                            Se connecter
-                          </Link>
-                        </Button>
-                        <Button 
-                          asChild 
-                          className="w-full py-3 font-semibold text-white rounded-lg shadow-lg bg-primary hover:bg-primary/90"
-                        >
-                          <Link to="/register" onClick={() => setIsOpen(false)}>
-                            <Calendar className="w-4 h-4 mr-2" />
-                            S'inscrire
-                          </Link>
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
+        <div className="flex flex-col flex-1 overflow-y-auto">
+          {/* User Info Section for Mobile */}
+          {token && user && (
+            <div className="px-4 py-3 border-b border-gray-100 sm:px-6 sm:py-4 bg-gray-50">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <Avatar className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14">
+                  <AvatarImage src="https://i.pinimg.com/736x/59/92/db/5992db2c560e19ec9a2ec15c932a5114.jpg" />
+                  <AvatarFallback className="text-sm font-semibold sm:text-base lg:text-lg bg-primary/10 text-primary">
+                    {user.name?.charAt(0) || user.email?.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 sm:text-base lg:text-lg">{user.name}</p>
+                  <p className="text-xs text-gray-600 sm:text-sm lg:text-base">{user.email}</p>
                 </div>
               </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+            </div>
+          )}
 
+          {/* Navigation Links */}
+          <nav className="flex-1 px-2 py-3 sm:px-3 sm:py-4 md:px-3 md:py-3 lg:px-3 lg:py-4 xl:px-4 xl:py-6">
+            <div className="space-y-1 lg:space-y-2">
+              {navigationItems.map((item) => {
+                const IconComponent = item.icon
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className="flex items-center px-2 py-2 sm:px-3 sm:py-2.5 md:px-3 md:py-2 lg:px-3 lg:py-3 xl:px-4 xl:py-3.5 space-x-2 sm:space-x-3 text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <IconComponent className="w-4 h-4 text-gray-500 transition-colors duration-200 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6" />
+                    <span className="text-sm font-medium sm:text-base md:text-sm lg:text-base xl:text-lg">{item.name}</span>
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* User Actions for Mobile */}
+            {token && user && (
+              <div className="pt-4 mt-4 space-y-1 border-t border-gray-200 sm:pt-6 sm:mt-6 lg:space-y-2">
+                <Link
+                  to="/profile"
+                  className="flex items-center px-2 py-2 sm:px-3 sm:py-2.5 md:px-3 md:py-2 lg:px-3 lg:py-3 xl:px-4 xl:py-3.5 space-x-2 sm:space-x-3 text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <User className="w-4 h-4 text-gray-500 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6" />
+                  <span className="text-sm font-medium sm:text-base md:text-sm lg:text-base xl:text-lg">Mon Profil</span>
+                </Link>
+                <Link
+                  to="/appointments"
+                  className="flex items-center px-2 py-2 sm:px-3 sm:py-2.5 md:px-3 md:py-2 lg:px-3 lg:py-3 xl:px-4 xl:py-3.5 space-x-2 sm:space-x-3 text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Calendar className="w-4 h-4 text-gray-500 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6" />
+                  <span className="text-sm font-medium sm:text-base md:text-sm lg:text-base xl:text-lg">Mes Rendez-vous</span>
+                </Link>
+                <button
+                  onClick={() => setDialogOpen(true)}
+                  className="flex items-center w-full px-2 py-2 sm:px-3 sm:py-2.5 md:px-3 md:py-2 lg:px-3 lg:py-3 xl:px-4 xl:py-3.5 space-x-2 sm:space-x-3 text-red-600 transition-all duration-200 rounded-lg hover:bg-red-50"
+                >
+                  <LogOut className="w-4 h-4 text-red-600 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6" />
+                  <span className="text-sm font-medium sm:text-base md:text-sm lg:text-base xl:text-lg">Se déconnecter</span>
+                </button>
+              </div>
+            )}
+          </nav>
+
+          {/* CTA Buttons Section */}
+          <div className="p-3 mt-auto border-t border-gray-100 sm:p-4 lg:p-5 bg-gray-50">
+            {!token || !user ? (
+              <div className="space-y-2 sm:space-y-3">
+                <Button 
+                  variant="outline" 
+                  asChild 
+                  className="w-full py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base lg:text-lg font-semibold bg-white border-2 rounded-lg hover:bg-gray-50"
+                >
+                  <Link to="/login" onClick={() => setIsOpen(false)}>
+                    Se connecter
+                  </Link>
+                </Button>
+                <Button 
+                  asChild 
+                  className="w-full py-2 sm:py-2.5 lg:py-3 text-sm sm:text-base lg:text-lg font-semibold text-white rounded-lg shadow-lg bg-primary hover:bg-primary/90"
+                >
+                  <Link to="/register" onClick={() => setIsOpen(false)}>
+                    <Calendar className="w-4 h-4 mr-2 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                    S'inscrire
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </SheetContent>
+  </Sheet>
+</div>
         {/* Logout Confirmation Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>
