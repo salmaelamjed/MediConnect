@@ -1,5 +1,5 @@
 "use client";
-import { ArrowRight, Search, MapPin, Copy } from "lucide-react";
+import { Search, MapPin, Copy, Calendar, Clock3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -9,18 +9,23 @@ import { actGetAllCabinetsActive } from "@/store/cabinets/act/actGetAllCabinetsA
 import type { Cabinet } from "@/types/cabinet";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import L, { Marker as LeafletMarker, type LatLngExpression } from "leaflet";
 import { toast } from "sonner";
 
-// Fix for Leaflet default marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+// Define a type for Leaflet Icon prototype to avoid `any`
+interface IconDefaultPrototype {
+  _getIconUrl?: () => string;
+}
+
+// Fix for Leaflet default marker icons with proper typing
+delete (L.Icon.Default.prototype as IconDefaultPrototype)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Custom green icon for hover state
+// Custom green icon for hover state with proper typing
 const greenIcon = new L.Icon({
   iconRetinaUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
@@ -31,21 +36,17 @@ const greenIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// Modal component for copy confirmation
-function CopyConfirmationModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  coordinates,
-}: {
+// Modal component for copy confirmation with typed props
+interface CopyConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   coordinates: string;
-}) {
+}
+
+function CopyConfirmationModal({ isOpen, onClose, onConfirm, coordinates }: CopyConfirmationModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Focus management for accessibility
   useEffect(() => {
     if (isOpen && modalRef.current) {
       modalRef.current.focus();
@@ -87,15 +88,19 @@ function CopyConfirmationModal({
   );
 }
 
-// Component to handle map bounds
-function MapBounds({ cabinets }: { cabinets: Cabinet[] }) {
+// Component to handle map bounds with typed props
+interface MapBoundsProps {
+  cabinets: Cabinet[];
+}
+
+function MapBounds({ cabinets }: MapBoundsProps) {
   const map = useMap();
 
   useEffect(() => {
     if (!cabinets.length) return;
 
     const validCabinets = cabinets.filter(
-      (c) =>
+      (c): c is Cabinet & { latitude: string; longitude: string } =>
         c.latitude !== undefined &&
         c.longitude !== undefined &&
         !isNaN(parseFloat(c.latitude)) &&
@@ -106,10 +111,10 @@ function MapBounds({ cabinets }: { cabinets: Cabinet[] }) {
 
     if (validCabinets.length === 1) {
       const { latitude, longitude } = validCabinets[0];
-      map.setView([parseFloat(latitude!), parseFloat(longitude!)], 15);
+      map.setView([parseFloat(latitude), parseFloat(longitude)], 15);
     } else {
       const bounds = L.latLngBounds(
-        validCabinets.map((c) => [parseFloat(c.latitude!), parseFloat(c.longitude!)] as [number, number])
+        validCabinets.map((c) => [parseFloat(c.latitude), parseFloat(c.longitude)] as LatLngExpression)
       );
       map.fitBounds(bounds, { padding: [50, 50] });
     }
@@ -117,6 +122,41 @@ function MapBounds({ cabinets }: { cabinets: Cabinet[] }) {
 
   return null;
 }
+
+// Helper function to calculate distance using the Haversine formula
+const getDistance = (cabinet: Cabinet, userLocation: { lat: number; lng: number } | null): string => {
+  if (
+    !userLocation ||
+    !cabinet.latitude ||
+    !cabinet.longitude ||
+    isNaN(parseFloat(cabinet.latitude)) ||
+    isNaN(parseFloat(cabinet.longitude))
+  ) {
+    return "Distance non disponible";
+  }
+
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+
+  const lat1 = parseFloat(cabinet.latitude);
+  const lon1 = parseFloat(cabinet.longitude);
+  const lat2 = userLocation.lat;
+  const lon2 = userLocation.lng;
+
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+
+  if (distance >= 1) {
+    return `${distance.toFixed(1)} km`;
+  } else {
+    return `${(distance * 1000).toFixed(0)} m`;
+  }
+};
 
 export default function SearchResults() {
   const location = useLocation();
@@ -130,21 +170,40 @@ export default function SearchResults() {
   const [hoveredCabinetId, setHoveredCabinetId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] = useState<string>("");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const markerRefs = useRef<{ [key: string]: L.Marker }>({});
+  const markerRefs = useRef<{ [key: string]: LeafletMarker }>({});
 
   const navigate = useNavigate();
   const { cabinets, loading } = useAppSelector((state) => state.cabinets);
   const dispatch = useAppDispatch();
 
-  // Fetch cabinets on mount
+  // Fetch cabinets and user location
   useEffect(() => {
     dispatch(actGetAllCabinetsActive());
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Error getting user location:", error);
+          setUserLocation({ lat: 33.5731, lng: -7.5898 }); // Fallback to Casablanca
+          toast.info("Impossible de récupérer votre position. Utilisation de Casablanca comme position par défaut.");
+        }
+      );
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+      setUserLocation({ lat: 33.5731, lng: -7.5898 });
+      toast.info("Géolocalisation non supportée. Utilisation de Casablanca comme position par défaut.");
+    }
   }, [dispatch]);
 
-  // Handle clicks outside search container to hide suggestions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -158,17 +217,18 @@ export default function SearchResults() {
     };
   }, []);
 
-  // Filter cabinets and suggestions based on search term
   useEffect(() => {
     if (loading) return;
 
     const lowerSearch = searchTerm.toLowerCase().trim();
     if (lowerSearch) {
-      const filtered = cabinets.filter(
-        (cabinet) =>
-          (cabinet.name?.toLowerCase()?.includes(lowerSearch) || false) ||
-          (cabinet.description?.toLowerCase()?.includes(lowerSearch) || false) ||
-          (cabinet.address?.toLowerCase()?.includes(lowerSearch) || false)
+      const filtered = cabinets.filter((cabinet) =>
+        [
+          cabinet.name?.toLowerCase(),
+          cabinet.description?.toLowerCase(),
+          cabinet.address?.toLowerCase(),
+          ...(cabinet.specialities || []).map((s: { name: string }) => s.name.toLowerCase()),
+        ].some((field) => field?.includes(lowerSearch))
       );
 
       if (showSuggestions && lowerSearch.length > 0) {
@@ -184,7 +244,6 @@ export default function SearchResults() {
     }
   }, [searchTerm, cabinets, loading, showSuggestions, initialSearchTerm]);
 
-  // Open popup for hovered cabinet
   useEffect(() => {
     if (hoveredCabinetId && markerRefs.current[hoveredCabinetId]) {
       markerRefs.current[hoveredCabinetId].openPopup();
@@ -225,33 +284,29 @@ export default function SearchResults() {
     }
   };
 
-  // Calculate map center (fallback for initial render)
   const mapCenter = useMemo((): [number, number] => {
     const validCabinets = filteredCabinets.filter(
-      (c) =>
+      (c): c is Cabinet & { latitude: string; longitude: string } =>
         c.latitude !== undefined &&
         c.longitude !== undefined &&
         !isNaN(parseFloat(c.latitude)) &&
         !isNaN(parseFloat(c.longitude))
     );
     if (validCabinets.length === 0) {
-      return [33.5731, -7.5898];
+      return [33.5731, -7.5898]; // Default to Casablanca
     }
-    const avgLat = validCabinets.reduce((sum, c) => sum + parseFloat(c.latitude || "0"), 0) / validCabinets.length;
-    const avgLng = validCabinets.reduce((sum, c) => sum + parseFloat(c.longitude || "0"), 0) / validCabinets.length;
+    const avgLat = validCabinets.reduce((sum, c) => sum + parseFloat(c.latitude), 0) / validCabinets.length;
+    const avgLng = validCabinets.reduce((sum, c) => sum + parseFloat(c.longitude), 0) / validCabinets.length;
     return [avgLat, avgLng];
   }, [filteredCabinets]);
 
-  // Format coordinates for display
-  const formatCoordinates = (lat?: string, lng?: string) => {
+  const formatCoordinates = (lat?: string, lng?: string): string => {
     if (!lat || !lng) return "Coordonnées non disponibles";
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
-    if (isNaN(latNum) || isNaN(lngNum)) return "Coordonnées non disponibles";
-    return `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}`;
+    return isNaN(latNum) || isNaN(lngNum) ? "Coordonnées non disponibles" : `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}`;
   };
 
-  // Function to open modal with coordinates
   const handleOpenCopyModal = (lat?: string, lng?: string) => {
     const coordinates = formatCoordinates(lat, lng);
     if (coordinates !== "Coordonnées non disponibles") {
@@ -262,7 +317,6 @@ export default function SearchResults() {
     }
   };
 
-  // Function to copy coordinates to clipboard with fallback
   const handleCopyLocation = () => {
     if (!selectedCoordinates || selectedCoordinates === "Coordonnées non disponibles") {
       toast.error("Aucune coordonnée valide à copier.");
@@ -270,37 +324,37 @@ export default function SearchResults() {
       return;
     }
 
-    // Modern clipboard API
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(selectedCoordinates).then(() => {
-        toast.success("Localisation copiée avec succès", {
-          duration: 1000,
-          position: "bottom-right",
-        });
-        setIsModalOpen(false);
-      }).catch((err) => {
-        console.error("Erreur lors de la copie avec navigator.clipboard :", err);
-        // Fallback to document.execCommand
-        try {
-          const textarea = document.createElement("textarea");
-          textarea.value = selectedCoordinates;
-          document.body.appendChild(textarea);
-          textarea.select();
-          document.execCommand("copy");
-          document.body.removeChild(textarea);
+      navigator.clipboard
+        .writeText(selectedCoordinates)
+        .then(() => {
           toast.success("Localisation copiée avec succès", {
             duration: 1000,
             position: "bottom-right",
           });
           setIsModalOpen(false);
-        } catch (fallbackErr) {
-          console.error("Erreur lors de la copie avec execCommand :", fallbackErr);
-          toast.error("Erreur lors de la copie des coordonnées.");
-          setIsModalOpen(false);
-        }
-      });
+        })
+        .catch((err) => {
+          console.error("Erreur lors de la copie avec navigator.clipboard :", err);
+          try {
+            const textarea = document.createElement("textarea");
+            textarea.value = selectedCoordinates;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+            toast.success("Localisation copiée avec succès", {
+              duration: 1000,
+              position: "bottom-right",
+            });
+            setIsModalOpen(false);
+          } catch (fallbackErr) {
+            console.error("Erreur lors de la copie avec execCommand :", fallbackErr);
+            toast.error("Erreur lors de la copie des coordonnées.");
+            setIsModalOpen(false);
+          }
+        });
     } else {
-      // Fallback for older browsers without clipboard API
       try {
         const textarea = document.createElement("textarea");
         textarea.value = selectedCoordinates;
@@ -339,13 +393,13 @@ export default function SearchResults() {
                 <Input
                   ref={inputRef}
                   type="text"
-                  placeholder="Rechercher cabinet médical, médecins, services..."
+                  placeholder="Rechercher cabinet médical, médecins, spécialités..."
                   value={searchTerm}
                   onChange={handleInputChange}
                   onFocus={handleInputFocus}
                   onKeyPress={handleKeyPress}
                   className="h-12 pl-12 text-xl font-medium bg-transparent border-none focus:outline-none"
-                  aria-label="Rechercher services médicaux, cabinets ou médecins"
+                  aria-label="Rechercher services médicaux, cabinets ou spécialités"
                 />
               </div>
               <Button
@@ -359,11 +413,14 @@ export default function SearchResults() {
 
             {/* Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute left-0 z-20 w-full mt-1 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg max-h-60">
+              <div
+                className="absolute left-0 z-20 w-full mt-1 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm"
+                style={{ maxHeight: "240px" }}
+              >
                 {suggestions.map((suggestion) => (
                   <div
                     key={suggestion.id}
-                    className="flex items-center gap-3 p-3 text-lg transition-colors duration-150 cursor-pointer hover:bg-gray-50"
+                    className="flex items-start gap-3 p-3 text-lg cursor-pointer hover:bg-gray-100 text-foreground"
                     onClick={() => handleSuggestionClick(suggestion)}
                     onKeyPress={(e) => e.key === "Enter" && handleSuggestionClick(suggestion)}
                     tabIndex={0}
@@ -372,14 +429,15 @@ export default function SearchResults() {
                   >
                     <img
                       src={suggestion.image || "/placeholder.svg"}
-                      alt={suggestion.name || "Cabinet"}
-                      className="object-cover w-10 h-10 rounded"
+                      alt={`${suggestion.name || "Cabinet"} image`}
+                      className="object-cover w-12 h-12 rounded-md"
                     />
-                    <div className="flex-1">
-                      <div className="font-medium truncate">{suggestion.name || "Cabinet sans nom"}</div>
-                      <div className="text-sm text-gray-500 truncate">{suggestion.address}</div>
+                    <div className="flex flex-col">
+                      <span className="font-medium truncate text-foreground">
+                        {suggestion.name || "Cabinet sans nom"}
+                      </span>
+                      <span className="text-sm text-emerald-500">{suggestion.address}</span>
                     </div>
-                    <Search className="w-4 h-4 text-gray-400" />
                   </div>
                 ))}
               </div>
@@ -390,14 +448,6 @@ export default function SearchResults() {
 
       {/* Search Results Section */}
       <section className="container px-4 py-8 mx-auto">
-        <h4 className="mb-6 text-3xl font-bold text-start">Résultats de recherche</h4>
-        {searchTerm && (
-          <span className="mb-6 text-gray-600 text-start">
-            Résultats pour: "<span className="font-semibold">{searchTerm}</span>"
-            {!loading && ` (${filteredCabinets.length} résultat${filteredCabinets.length > 1 ? "s" : ""})`}
-          </span>
-        )}
-
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Left: Cabinet Cards */}
           <div className="space-y-6">
@@ -412,66 +462,71 @@ export default function SearchResults() {
                 <p>Essayez de modifier vos termes de recherche</p>
               </div>
             ) : (
-              filteredCabinets.map((cabinet) => (
-                <div
-                  key={cabinet.id}
-                  className="relative p-6 overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 shadow-sm rounded-xl hover:shadow-md"
-                  onMouseEnter={() => setHoveredCabinetId(String(cabinet.id))}
-                  onMouseLeave={() => setHoveredCabinetId(null)}
-                >
-                  <div className="flex flex-col gap-4 md:flex-row">
-                    <img
-                      src={cabinet.image || "/placeholder.svg"}
-                      alt={cabinet.name || "Cabinet"}
-                      className="object-cover w-full h-48 rounded-lg md:w-48"
-                    />
-                    <div className="flex-1">
-                      <h3 className="mb-2 text-xl font-bold text-gray-900">
-                        {cabinet.name || "Cabinet sans nom"}
-                      </h3>
-                      <h4>Founder by : {cabinet.owner_name}</h4>
+              filteredCabinets.map((cabinet) => {
+                const distance = getDistance(cabinet, userLocation);
 
-                      <div className="mb-3 space-y-2">
-                        <div className="flex items-start gap-2 text-sm text-gray-600">
-                          <MapPin
-                            className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                              hoveredCabinetId !== null && hoveredCabinetId === String(cabinet.id)
-                                ? "text-green-500"
-                                : "text-gray-400"
-                            }`}
-                          />
-                          <span
-                            className={
-                              hoveredCabinetId !== null && hoveredCabinetId === String(cabinet.id)
-                                ? "text-green-500"
-                                : ""
-                            }
-                          >
-                            {cabinet.address || "Adresse non disponible"}
+                return (
+                  <div
+                    key={cabinet.id}
+                    className="relative p-4 transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-lg hover:shadow-xl"
+                    onMouseEnter={() => setHoveredCabinetId(String(cabinet.id))}
+                    onMouseLeave={() => setHoveredCabinetId(null)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={cabinet.image || "/placeholder.svg"}
+                        alt={cabinet.name || "Cabinet"}
+                        className="object-cover w-32 h-32 rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-bold text-gray-900">{cabinet.name || "Cabinet sans nom"}</h3>
+                          <span className="text-blue-600">✓</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
+                          <MapPin className="w-4 h-4 text-green-500" />
+                          <span>
+                            {cabinet.address || "Adresse non disponible"}, {cabinet.postal_code} {cabinet.city}
+                          </span>
+                          <span className="ml-2 text-gray-400">≈ {distance}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-6">
+                          {(cabinet.specialities || []).map((specialty: { name: string }) => (
+                            <span
+                              key={specialty.name}
+                              className="px-2 py-1 text-sm text-blue-600 bg-blue-100 rounded-full"
+                            >
+                              {specialty.name}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <span className="text-green-600">
+                            <Calendar className="inline-block w-4 h-4" /> 5 créneaux dispo
+                          </span>
+                          <span>
+                            <Clock3 className="inline-block w-4 h-4" /> Next: 14h30
                           </span>
                         </div>
-                       <div className="flex justify-between">
-                        {cabinet.specialities && (
-                          <span className="px-4 font-bold text-white rounded-full bg-primary">{cabinet.specialities}</span>
-                        )}
-                       </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                          <Button
+                            variant="outline"
+                            className="px-4 py-2 text-blue-600 border-blue-600 hover:bg-blue-50"
+                          >
+                            Plus d'infos
+                          </Button>
+                          <Button
+                            className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700"
+                            onClick={() => navigate(`/cabinets/${cabinet.id}`)}
+                          >
+                            Prendre RDV
+                          </Button>
+                        </div>
                       </div>
-
-                      <p className="mb-4 text-sm text-gray-700 line-clamp-3">
-                        {cabinet.description || "Aucune description disponible"}
-                      </p>
-
-                      <Button
-                        className="px-6 py-2 text-white transition-colors duration-200 bg-primary hover:bg-primary/90"
-                        onClick={() => navigate(`/cabinets/${cabinet.id}`)}
-                      >
-                        Voir les détails
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -491,7 +546,7 @@ export default function SearchResults() {
                 <MapBounds cabinets={filteredCabinets} />
                 {filteredCabinets
                   .filter(
-                    (cabinet) =>
+                    (cabinet): cabinet is Cabinet & { latitude: string; longitude: string } =>
                       cabinet.latitude !== undefined &&
                       cabinet.longitude !== undefined &&
                       !isNaN(parseFloat(cabinet.latitude)) &&
@@ -500,7 +555,7 @@ export default function SearchResults() {
                   .map((cabinet) => (
                     <Marker
                       key={cabinet.id}
-                      position={[parseFloat(cabinet.latitude!), parseFloat(cabinet.longitude!)]}
+                      position={[parseFloat(cabinet.latitude), parseFloat(cabinet.longitude)]}
                       icon={
                         hoveredCabinetId !== null && hoveredCabinetId === String(cabinet.id)
                           ? greenIcon

@@ -1,10 +1,10 @@
 import Footer from "./components/shared/Footer";
-import HeroSection from "./pages/HeroSection";
+import LandingPage from "./pages/landing-page";
 
 export default function App() {
   return (
    <>
-      <HeroSection/>
+      <LandingPage/>
    <Footer/>
    </>
   )

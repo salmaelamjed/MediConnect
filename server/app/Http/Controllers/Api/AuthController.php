@@ -56,7 +56,7 @@ class AuthController extends Controller
             // Fields for new cabinet
             'cabinet_name' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string' : 'nullable|string',
             'cabinet_description' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'nullable|string' : 'nullable|string',
-            'cabinet_address' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string' : 'nullable|string',
+            'cabinet_address' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string|min:10' : 'nullable|string',
             'cabinet_city' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string' : 'nullable|string',
             'cabinet_postal_code' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string' : 'nullable|string',
             'cabinet_email' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'nullable|email' : 'nullable|email',
@@ -129,10 +129,14 @@ class AuthController extends Controller
                     // Handle cabinet
                     if ($request->cabinet_option === 'new') {
                         // Create new cabinet
-                        $geocodeResults = $this->nominatimService->geocode($request->cabinet_address);
+                        $geocodeResults = $this->nominatimService->geocode($request->cabinet_address, $request->cabinet_city, $request->cabinet_postal_code);
 
                         if (empty($geocodeResults)) {
-                            throw new \Exception('Impossible de géocoder l\'adresse du cabinet');
+                            Log::warning('Geocoding failed for address: ' . $request->cabinet_address);
+                            return response()->json([
+                                'message' => 'Échec de l\'enregistrement',
+                                'error' => 'Impossible de géocoder l\'adresse du cabinet. Veuillez vérifier l\'adresse et inclure des détails comme le numéro de rue ou un point de repère.',
+                            ], 400);
                         }
 
                         $firstResult = $geocodeResults[0];
@@ -149,8 +153,8 @@ class AuthController extends Controller
                             'opening_time' => $request->cabinet_opening_time,
                             'closing_time' => $request->cabinet_closing_time,
                             'working_days' => $request->cabinet_working_days,
-                            'latitude' => $firstResult['lat'],
-                            'longitude' => $firstResult['lon'],
+                            'latitude' => $firstResult['lat'] ?? null,
+                            'longitude' => $firstResult['lon'] ?? null,
                             'is_active' => true,
                         ]);
 
