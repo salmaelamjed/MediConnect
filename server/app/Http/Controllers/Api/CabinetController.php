@@ -19,96 +19,102 @@ class CabinetController extends Controller
      * @return JsonResponse
      */
 public function allCabinetsActive(): JsonResponse
-    {
+{
+    try {
+        // Vérifier la connexion à la base de données
         try {
-            // Vérifier la connexion à la base de données
-            try {
-                DB::connection()->getPdo();
-            } catch (\Exception $e) {
-                Log::error('Connexion à la base de données échouée: ' . $e->getMessage());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Impossible de se connecter à la base de données',
-                    'error' => 'Erreur de connexion'
-                ], 500);
-            }
-
-            $cabinets = Cabinet::select(
-                'cabinets.id',
-                'cabinets.owner_id',
-                'cabinets.name',
-                'cabinets.description',
-                'cabinets.image',
-                'cabinets.address',
-                'cabinets.city',
-                'cabinets.postal_code',
-                'cabinets.email',
-                'cabinets.opening_time',
-                'cabinets.closing_time',
-                'cabinets.working_days',
-                'cabinets.latitude',
-                'cabinets.longitude',
-                'cabinets.is_active',
-                'cabinets.created_at',
-                'cabinets.updated_at',
-                'doctors.name as owner_name',
-                'users.email as owner_email'
-            )
-            ->where('cabinets.is_active', true)
-            ->leftJoin('users', 'cabinets.owner_id', '=', 'users.id')
-            ->leftJoin('doctors', 'users.id', '=', 'doctors.user_id')
-            ->with(['specialities' => function ($query) {
-                $query->select('specialities.name');
-            }])
-            ->get();
-
-            // Transformer les specialities en tableau de noms
-            $cabinets = $cabinets->map(function ($cabinet) {
-                $cabinet->specialities = $cabinet->specialities->pluck('name')->toArray();
-                return $cabinet;
-            });
-
-            // Vérifier si des cabinets ont été trouvés
-            if ($cabinets->isEmpty()) {
-                return response()->json([
-                    'success' => true,
-                    'data' => [],
-                    'message' => 'Aucun cabinet actif trouvé',
-                    'count' => 0
-                ], 200);
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $cabinets,
-                'message' => 'Cabinets actifs récupérés avec succès',
-                'count' => $cabinets->count()
-            ], 200);
-
-        } catch (QueryException $e) {
-            Log::error('Erreur de base de données dans allCabinetsActive: ' . $e->getMessage(), [
-                'sql' => $e->getSql(),
-                'bindings' => $e->getBindings()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des cabinets actifs',
-                'error' => 'Erreur de base de données: ' . $e->getMessage()
-            ], 500);
-
+            DB::connection()->getPdo();
         } catch (\Exception $e) {
-            Log::error('Erreur inattendue dans allCabinetsActive: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-
+            Log::error('Connexion à la base de données échouée: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur inattendue s\'est produite',
-                'error' => 'Erreur serveur: ' . $e->getMessage()
+                'message' => 'Impossible de se connecter à la base de données',
+                'error' => 'Erreur de connexion'
             ], 500);
         }
-    }   /**
+
+        $cabinets = Cabinet::select(
+            'cabinets.id',
+            'cabinets.owner_id',
+            'cabinets.name',
+            'cabinets.description',
+            'cabinets.image',
+            'cabinets.address',
+            'cabinets.city',
+            'cabinets.postal_code',
+            'cabinets.email',
+            'cabinets.opening_time',
+            'cabinets.closing_time',
+            'cabinets.working_days',
+            'cabinets.latitude',
+            'cabinets.longitude',
+            'cabinets.is_active',
+            'cabinets.created_at',
+            'cabinets.updated_at',
+            'doctors.name as owner_name',
+            'users.email as owner_email'
+        )
+        ->where('cabinets.is_active', true)
+        ->leftJoin('users', 'cabinets.owner_id', '=', 'users.id')
+        ->leftJoin('doctors', 'users.id', '=', 'doctors.user_id')
+        ->with([
+    'specialities' => function ($query) {
+        $query->select('specialities.name');
+    },
+    'doctors' => function ($query) {
+        $query->select('id', 'user_id', 'cabinet_id', 'name', 'license_number', 'bio', 'consultation_fees', 'start_time', 'end_time', 'available_days');
+    }
+     ])
+        ->get();
+
+        // Transformer les specialities en tableau de noms
+        $cabinets = $cabinets->map(function ($cabinet) {
+            $cabinet->specialities = $cabinet->specialities->pluck('name')->toArray();
+            return $cabinet;
+        });
+
+        // Vérifier si des cabinets ont été trouvés
+        if ($cabinets->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'message' => 'Aucun cabinet actif trouvé',
+                'count' => 0
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $cabinets,
+            'message' => 'Cabinets actifs récupérés avec succès',
+            'count' => $cabinets->count()
+        ], 200);
+
+    } catch (QueryException $e) {
+        Log::error('Erreur de base de données dans allCabinetsActive: ' . $e->getMessage(), [
+            'sql' => $e->getSql(),
+            'bindings' => $e->getBindings()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la récupération des cabinets actifs',
+            'error' => 'Erreur de base de données: ' . $e->getMessage()
+        ], 500);
+
+    } catch (\Exception $e) {
+        Log::error('Erreur inattendue dans allCabinetsActive: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Une erreur inattendue s\'est produite',
+            'error' => 'Erreur serveur: ' . $e->getMessage()
+        ], 500);
+    }
+}
+      /**
      * Récupérer tous les cabinets
      *
      * @return JsonResponse

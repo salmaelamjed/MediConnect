@@ -1,9 +1,12 @@
+import type { Doctor } from "./doctor";
+import type { Speciality } from "./speciality";
+
 export interface Cabinet {
   id: number;
   owner_id: number;
   name: string;
   description: string | null;
-  image: string ;
+  image: string;
   address: string;
   city: string;
   postal_code: string;
@@ -26,9 +29,9 @@ export interface Cabinet {
   updated_at: string;
   owner_name: string | null;
   owner_email: string | null;
-  specialities: string | null;
+  specialities: Speciality[];
+  doctors: Doctor[];
 }
-
 export interface CabinetsState {
   cabinets: Cabinet[];
   loading: boolean;
