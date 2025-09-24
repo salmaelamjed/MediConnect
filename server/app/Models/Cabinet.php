@@ -162,6 +162,6 @@ class Cabinet extends Model
             return $currentTime >= $openingTime && $currentTime <= $closingTime;
         }
 
-        return true; // Si pas d'heures spécifiées, considérer comme ouvert
+        return true;
     }
 }

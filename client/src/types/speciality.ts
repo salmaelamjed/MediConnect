@@ -1,9 +1,6 @@
 export interface Speciality {
+  id: number;
   name: string;
-  pivot: {
-    cabinet_id: number;
-    speciality_id: number;
-    created_at: string;
-    updated_at: string;
-  };
+  description: string;
+  icon: string;
 }

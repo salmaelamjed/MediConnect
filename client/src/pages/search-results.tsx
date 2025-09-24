@@ -1,38 +1,35 @@
 "use client";
-import { Search, MapPin, Copy, Calendar, Clock3, LucideMapPinned } from "lucide-react";
+import { Search, MapPin, Copy, Clock3, LucideMapPinned, Clock, CheckCircle2, User, Stethoscope, Mail, Calendar as Calendar1 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useState, useMemo, useRef } from "react";
-import { actGetAllCabinetsActive } from "@/store/cabinets/act/actGetAllCabinetsActive";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { actSearch } from "@/store/cabinets/act/actSearch";
 import type { Cabinet } from "@/types/cabinet";
+import { debounce } from "lodash";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L, { Marker as LeafletMarker, type LatLngExpression } from "leaflet";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { User, Stethoscope, DollarSign, Mail, UserPlus, CalendarDays, Clock, CheckCircle2 } from "lucide-react";
-import type { Doctor } from "@/types/doctor";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import DoctorCard from "@/components/shared/DoctorCard";
 
-// Define a type for Leaflet Icon prototype to avoid `any`
-interface IconDefaultPrototype {
+// Fix for Leaflet default marker icons
+interface IconDefault extends L.Icon {
   _getIconUrl?: () => string;
 }
-
-// Fix for Leaflet default marker icons with proper typing
-delete (L.Icon.Default.prototype as IconDefaultPrototype)._getIconUrl;
+delete (L.Icon.Default.prototype as IconDefault)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Custom green icon for hover state with proper typing
+// Custom green icon for hover state
 const greenIcon = new L.Icon({
   iconRetinaUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
@@ -43,12 +40,38 @@ const greenIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// Modal component for copy confirmation with typed props
+// Copy Confirmation Modal
 interface CopyConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   coordinates: string;
+}
+
+export interface Doctor {
+  id: number;
+  user_id?:number;
+  cabinet_id?:number;
+  name: string;
+  license_number: string;
+  bio: string;
+  consultation_fees: string;
+  start_time: string;
+  end_time: string;
+  available_days: string[];
+  is_active: boolean;
+  speciality: {
+    id: number;
+    name: string;
+    icon: string;
+  };
+}
+
+export interface Speciality {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
 }
 
 function CopyConfirmationModal({ isOpen, onClose, onConfirm, coordinates }: CopyConfirmationModalProps) {
@@ -70,8 +93,7 @@ function CopyConfirmationModal({ isOpen, onClose, onConfirm, coordinates }: Copy
         className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg outline-none"
       >
         <p className="mb-4 text-gray-700">
-          The following coordinates are ready to be copied:{" "}
-          <span className="font-mono">{coordinates}</span>
+          The following coordinates are ready to be copied: <span className="font-mono">{coordinates}</span>
         </p>
         <div className="flex justify-end gap-4">
           <Button
@@ -95,7 +117,7 @@ function CopyConfirmationModal({ isOpen, onClose, onConfirm, coordinates }: Copy
   );
 }
 
-// Component to handle map bounds with typed props
+// Map Bounds Component
 interface MapBoundsProps {
   cabinets: Cabinet[];
 }
@@ -130,7 +152,7 @@ function MapBounds({ cabinets }: MapBoundsProps) {
   return null;
 }
 
-// Helper function to calculate distance using the Haversine formula
+// Distance calculation
 const getDistance = (cabinet: Cabinet, userLocation: { lat: number; lng: number } | null): string => {
   if (
     !userLocation ||
@@ -158,67 +180,74 @@ const getDistance = (cabinet: Cabinet, userLocation: { lat: number; lng: number 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
 
-  if (distance >= 1) {
-    return `${distance.toFixed(1)} km`;
-  } else {
-    return `${(distance * 1000).toFixed(0)} m`;
-  }
+  return distance >= 1 ? `${distance.toFixed(1)} km` : `${(distance * 1000).toFixed(0)} m`;
 };
 
-// Improved Doctor Card Component
-interface DoctorCardProps {
-  doctor: Doctor; // Adjust based on Doctor type
-  onReserve: () => void;
-  specialty?: string;
+
+
+// Reservation Summary Modal
+interface ReservationSummaryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  selectedDoctor: Doctor | null;
+  selectedDate: Date | null;
+  selectedTime: string | null;
+  formData: { firstName: string; lastName: string; reason: string };
 }
 
-function DoctorCard({ doctor, onReserve, specialty }: DoctorCardProps) {
+function ReservationSummaryModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  selectedDoctor,
+  selectedDate,
+  selectedTime,
+  formData,
+}: ReservationSummaryModalProps) {
+  if (!isOpen || !selectedDoctor || !selectedDate || !selectedTime) return null;
+
   return (
-    <Card className="overflow-hidden transition-all duration-300 border-gray-200 hover:shadow-md hover:border-blue-200">
-      <CardHeader className="p-4 pb-2 bg-gradient-to-br from-blue-50 to-white">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-12 h-12">
-            <AvatarImage src="https://i.pinimg.com/736x/83/16/d3/8316d3dbd46ded94493d4ea796325b8a.jpg" alt={doctor.name} />
-            <AvatarFallback className="w-12 h-12 text-blue-600 bg-blue-100">
-              <User className="w-6 h-6" />
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold leading-tight text-gray-900">{doctor.name}</CardTitle>
-            <CardDescription className="flex items-center gap-1 text-sm text-gray-600">
-              <Stethoscope className="w-4 h-4 text-primary" />
-              {specialty || "Specialty not specified"}
-            </CardDescription>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-blue-800">
+            <CheckCircle2 className="w-5 h-5" />
+            Reservation Summary
+          </DialogTitle>
+        </DialogHeader>
+        <div className="p-4 space-y-3 bg-white border rounded-lg">
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <span className="text-gray-600">Doctor:</span>
+            <span className="font-medium">{selectedDoctor.name}</span>
+            <span className="text-gray-600">Date:</span>
+            <span className="font-medium">{selectedDate.toLocaleDateString()}</span>
+            <span className="text-gray-600">Time:</span>
+            <span className="font-medium">{selectedTime}</span>
+            <span className="text-gray-600">Patient:</span>
+            <span className="font-medium">{formData.firstName} {formData.lastName}</span>
+            <span className="text-gray-600">Price:</span>
+            <span className="font-semibold text-green-600">{selectedDoctor.consultation_fees} MAD</span>
+          </div>
+          <div className="flex justify-end gap-4">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={onConfirm}
+              className="text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+            >
+              Confirm Reservation
+              <CheckCircle2 className="w-4 h-4 ml-2" />
+            </Button>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="mb-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-600">Consultation fee</span>
-            <div className="flex items-center gap-1 font-semibold text-green-600">
-              {doctor.consultation_fees} MAD
-            </div>
-          </div>
-          <Separator className="my-2" />
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>Availability</span>
-            <span className="px-2 text-xs text-white bg-orange-500 rounded-full">5 slots</span>
-          </div>
-        </div>
-        <Button
-          onClick={onReserve}
-          className="w-full text-white transition-all duration-200 shadow-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Book now
-        </Button>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// Improved Expanded Cabinet Details Section
+// Expanded Cabinet Details
 interface ExpandedCabinetDetailsProps {
   cabinet: Cabinet;
   isExpanded: boolean;
@@ -239,7 +268,6 @@ interface ExpandedCabinetDetailsProps {
 function ExpandedCabinetDetails({
   cabinet,
   isExpanded,
-  onToggleExpand,
   onReserveDoctor,
   step,
   selectedDoctor,
@@ -255,133 +283,120 @@ function ExpandedCabinetDetails({
   if (!isExpanded) return null;
 
   return (
-    <div className="mt-6 space-y-6 duration-300 animate-in slide-in-from-top-2">
-
-      {/* Doctors Section */}
-      {step === 0 && (
-        <Card className="border-gray-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-              <Stethoscope className="w-5 h-5 text-blue-600" />
-              Available Doctors
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {(cabinet.doctors || []).map((doctor: Doctor) => (
-                <DoctorCard
-                  key={doctor.id}
-                  doctor={doctor}
-                  specialty={cabinet.specialities?.find((s: { name: string }) => s.name)?.name || "N/A"}
-                  onReserve={() => onReserveDoctor(doctor)}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Reservation Steps */}
-      {step > 0 && (
-        <Card className="border-2 border-blue-200 shadow-sm bg-blue-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-blue-800">
-              <CalendarDays className="w-5 h-5" />
-              Step {step}/4: Reservation Process
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
+    <div className="transition-all duration-300 animate-in slide-in-from-top-2">
+      <Card className="h-[430px] border-none">
+        <CardContent className="flex flex-col justify-between h-full p-6">
+          <div>
+            {step === 0 && (
+              <h3 className="flex items-center gap-2 text-lg font-semibold">
+                <Stethoscope className="w-5 h-5 text-blue-600" />
+                Available Doctors
+              </h3>
+            )}
             {step === 1 && selectedDoctor && (
-              <>
-                <p className="text-sm text-gray-600">Select a date for {selectedDoctor.name}</p>
-                <Input
-                  type="date"
-                  onChange={(e) => onDateSelect(new Date(e.target.value))}
-                  className="w-full max-w-md"
-                />
-              </>
+              <p className="mb-1 text-base text-gray-600">Select a date for {selectedDoctor.name}</p>
             )}
             {step === 2 && selectedDate && selectedDoctor && (
-              <>
-                <p className="text-sm text-gray-600">Select a time for {selectedDate.toLocaleDateString()}</p>
-                <div className="grid max-w-md grid-cols-3 gap-2">
-                  {["09:00", "10:00", "14:00", "15:00", "16:00"].map((time) => (
-                    <Button
-                      key={time}
-                      variant={selectedTime === time ? "default" : "outline"}
-                      onClick={() => onTimeSelect(time)}
-                      className="w-full"
-                    >
-                      {time}
-                    </Button>
-                  ))}
-                </div>
-              </>
+              <p className="mb-1 text-base text-gray-600">Select a time for {selectedDate.toLocaleDateString()}</p>
             )}
             {step === 3 && selectedTime && selectedDate && selectedDoctor && (
-              <>
-                <p className="text-sm text-gray-600">Fill in patient details</p>
-                <div className="space-y-3">
+              <p className="mb-1 text-base text-gray-600">Fill in patient details</p>
+            )}
+          </div>
+          <div className="flex items-center justify-center flex-1 overflow-y-auto">
+            {step === 0 && (
+              <div className="flex w-full space-x-4 overflow-x-auto snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                {(cabinet.doctors || []).map((doctor: Doctor) => (
+                  <div key={doctor.id} className="snap-start">
+                    <DoctorCard
+                      doctor={doctor}
+                      specialty={doctor.speciality?.name || cabinet.specialities?.find((s: { name: string }) => s.name)?.name || "N/A"}
+                      onReserve={() => onReserveDoctor(doctor)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            {step === 1 && selectedDoctor && (
+              <div className="w-full">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate || undefined}
+                  onSelect={(date) => date && onDateSelect(date)}
+                  className="border rounded-md shadow-sm"
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                />
+              </div>
+            )}
+            {step === 2 && selectedDate && selectedDoctor && (
+              <div className="grid w-full max-w-md grid-cols-4 gap-2">
+                {["09:00", "10:00", "14:00", "15:00", "16:00", "11:30", "10:30", "15:30"].map((time) => (
+                  <Badge
+                    key={time}
+                    variant={selectedTime === time ? "success" : "outline"}
+                    onClick={() => onTimeSelect(time)}
+                    className="justify-center w-full py-2 text-sm text-center cursor-pointer"
+                  >
+                    {time}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {step === 3 && selectedTime && selectedDate && selectedDoctor && (
+              <div className="relative w-full max-w-md space-y-3">
+                <div className="relative">
+                  <User className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                   <Input
                     type="text"
+                    placeholder="First Name"
                     name="firstName"
                     value={formData.firstName}
                     onChange={onFormChange}
-                    placeholder="First Name"
+                    className="pl-10 text-sm transition-all duration-200 border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                    required
                   />
+                </div>
+                <div className="relative">
+                  <User className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                   <Input
                     type="text"
+                    placeholder="Last Name"
                     name="lastName"
                     value={formData.lastName}
                     onChange={onFormChange}
-                    placeholder="Last Name"
+                    className="pl-10 text-sm transition-all duration-200 border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                    required
                   />
+                </div>
+                <div className="relative">
                   <Input
                     type="text"
                     name="reason"
                     value={formData.reason}
                     onChange={onFormChange}
                     placeholder="Reason for visit"
+                    className="pl-10 text-sm transition-all duration-200 border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
                   />
-                </div>
-              </>
-            )}
-            {step === 4 && selectedTime && selectedDate && selectedDoctor && (
-              <div className="p-4 space-y-3 bg-white border rounded-lg">
-                <h4 className="font-semibold text-blue-800">Reservation Summary</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-gray-600">Doctor:</span>
-                  <span className="font-medium">{selectedDoctor.name}</span>
-                  <span className="text-gray-600">Date:</span>
-                  <span className="font-medium">{selectedDate.toLocaleDateString()}</span>
-                  <span className="text-gray-600">Time:</span>
-                  <span className="font-medium">{selectedTime}</span>
-                  <span className="text-gray-600">Patient:</span>
-                  <span className="font-medium">{formData.firstName} {formData.lastName}</span>
-                  <span className="text-gray-600">Price:</span>
-                  <span className="font-semibold text-green-600">{selectedDoctor.consultation_fees} MAD</span>
                 </div>
               </div>
             )}
-            <div className="flex justify-between">
-              <Button
-                variant="outline"
-                onClick={onPrev}
-                className="px-4 py-2"
-              >
+          </div>
+          {(step === 1 || step === 2 || step === 3) && (
+            <div className="flex justify-between mt-4">
+              <Button variant="outline" onClick={onPrev} className="px-4 py-2">
                 Previous
               </Button>
               <Button
                 onClick={onNext}
                 className="px-4 py-2 text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
               >
-                {step < 4 ? "Next" : "Confirm Reservation"}
-                {step < 4 ? <Clock className="w-4 h-4 ml-2" /> : <CheckCircle2 className="w-4 h-4 ml-2" />}
+                Next
+                <Clock className="w-4 h-4 ml-2" />
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -390,110 +405,120 @@ export default function SearchResults() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const initialSearchTerm = searchParams.get("q") || "";
-
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
-  const [suggestions, setSuggestions] = useState<Cabinet[]>([]);
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState(initialSearchTerm);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredCabinets, setFilteredCabinets] = useState<Cabinet[]>([]);
   const [hoveredCabinetId, setHoveredCabinetId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedCoordinates, setSelectedCoordinates] = useState<string>("");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [expandedCabinetId, setExpandedCabinetId] = useState<string | null>(null);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null); // Adjust type based on Doctor structure
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [formData, setFormData] = useState({ firstName: "", lastName: "", reason: "" });
   const [step, setStep] = useState<number>(0);
-  const [selectedSpecialty, setSelectedSpecialty] = useState<string>("all");
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const markerRefs = useRef<{ [key: string]: LeafletMarker }>({});
-
   const navigate = useNavigate();
-  const { cabinets, loading } = useAppSelector((state) => state.cabinets);
+  const { searchResults, loading } = useAppSelector((state) => state.cabinets);
   const dispatch = useAppDispatch();
 
-  // Fetch cabinets and user location
-  useEffect(() => {
-    dispatch(actGetAllCabinetsActive());
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
+  // Debounced search function for suggestions only
+  const debouncedSearch = useCallback(
+    (term: string) => {
+      if (term.trim() && term.length >= 2) {
+        dispatch(actSearch(term))
+          .unwrap()
+          .then((result) => {
+            console.log("Suggestions fetched:", result);
+            setShowSuggestions(true);
+          })
+          .catch((error) => {
+            console.error("Suggestions fetch failed:", error);
+            toast.error("Failed to fetch suggestions.");
           });
-        },
-        (error) => {
-          console.error("Error getting user location:", error);
-          setUserLocation({ lat: 33.5731, lng: -7.5898 }); // Fallback to Casablanca
-          toast.info("Unable to retrieve your position. Using Casablanca as default position.");
-        }
-      );
-    } else {
-      console.error("Geolocation is not supported by this browser.");
-      setUserLocation({ lat: 33.5731, lng: -7.5898 });
-      toast.info("Geolocation not supported. Using Casablanca as default position.");
-    }
-  }, [dispatch]);
+      } else {
+        dispatch({ type: "cabinets/clearSearchResults" });
+        setShowSuggestions(false);
+      }
+    },
+    [dispatch]
+  );
 
+  // Create debounced version of the search function
+  const debouncedSearchHandler = useMemo(
+    () => debounce(debouncedSearch, 300),
+    [debouncedSearch]
+  );
+
+  // Trigger search for results only on appliedSearchTerm change
+  useEffect(() => {
+    if (appliedSearchTerm && appliedSearchTerm.length >= 2) {
+      dispatch(actSearch(appliedSearchTerm))
+        .unwrap()
+        .then((result) => {
+          console.log("Search results fetched:", result);
+        })
+        .catch((error) => {
+          console.error("Search failed:", error);
+          toast.error("Failed to fetch search results.");
+        });
+    } else {
+      dispatch({ type: "cabinets/clearSearchResults" });
+    }
+    return () => debouncedSearchHandler.cancel();
+  }, [appliedSearchTerm, dispatch, debouncedSearchHandler]);
+
+  // Fetch suggestions when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() && searchTerm.length >= 2) {
+      debouncedSearchHandler(searchTerm);
+    } else {
+      setShowSuggestions(false);
+    }
+  }, [searchTerm, debouncedSearchHandler]);
+
+  // Handle initial load from URL
+  useEffect(() => {
+    if (initialSearchTerm && initialSearchTerm.length >= 2) {
+      setSearchTerm(initialSearchTerm);
+      setAppliedSearchTerm(initialSearchTerm);
+    }
+  }, [initialSearchTerm]);
+
+  // Handle click outside to hide suggestions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Compute unique specialties
-  const uniqueSpecialties = useMemo(() => {
-    const specialtiesSet = new Set<string>();
-    cabinets.forEach((cabinet) => {
-      (cabinet.specialities || []).forEach((s: { name: string }) => {
-        if (s.name) specialtiesSet.add(s.name);
-      });
-    });
-    return Array.from(specialtiesSet);
-  }, [cabinets]);
-
+  // Fetch user location
   useEffect(() => {
-    if (loading) return;
-
-    const lowerSearch = searchTerm.toLowerCase().trim();
-    let filtered = cabinets;
-    if (lowerSearch) {
-      filtered = filtered.filter((cabinet) =>
-        [
-          cabinet.name?.toLowerCase(),
-          cabinet.description?.toLowerCase(),
-          cabinet.address?.toLowerCase(),
-          ...(cabinet.specialities || []).map((s: { name: string }) => s.name.toLowerCase()),
-        ].some((field) => field?.includes(lowerSearch))
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }),
+        (error) => {
+          console.error("Error getting user location:", error);
+          setUserLocation({ lat: 33.5731, lng: -7.5898 }); // Fallback to Casablanca
+          toast.info("Unable to retrieve your position. Using Casablanca as default.");
+        }
       );
+    } else {
+      setUserLocation({ lat: 33.5731, lng: -7.5898 });
+      toast.info("Geolocation not supported. Using Casablanca as default.");
     }
+  }, []);
 
-    if (selectedSpecialty !== "all") {
-      filtered = filtered.filter((cabinet) =>
-        cabinet.specialities?.some((s: { name: string }) => s.name === selectedSpecialty)
-      );
-    }
-
-    if (showSuggestions && lowerSearch.length > 0) {
-      setSuggestions(filtered.slice(0, 5));
-    }
-
-    if (initialSearchTerm || selectedSpecialty !== "all") {
-      setFilteredCabinets(filtered);
-    }
-  }, [searchTerm, cabinets, loading, showSuggestions, initialSearchTerm, selectedSpecialty]);
-
+  // Update map when hovered
   useEffect(() => {
     if (hoveredCabinetId && markerRefs.current[hoveredCabinetId]) {
       markerRefs.current[hoveredCabinetId].openPopup();
@@ -503,27 +528,26 @@ export default function SearchResults() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchTerm(value);
-    setShowSuggestions(true);
   };
 
   const handleInputFocus = () => {
-    if (searchTerm.trim()) {
-      setShowSuggestions(true);
-    }
+    if (searchTerm.trim()) setShowSuggestions(true);
   };
 
   const handleSearch = () => {
     if (searchTerm.trim()) {
+      setAppliedSearchTerm(searchTerm);
       setShowSuggestions(false);
       navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
     }
   };
 
   const handleSuggestionClick = (cabinet: Cabinet) => {
-    setSearchTerm(cabinet.name || "");
+    const term = cabinet.name || "";
+    setSearchTerm(term);
+    setAppliedSearchTerm(term);
     setShowSuggestions(false);
-    setFilteredCabinets([cabinet]);
-    navigate(`/search?q=${encodeURIComponent(cabinet.name || "")}`);
+    navigate(`/search?q=${encodeURIComponent(term)}`);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -535,20 +559,18 @@ export default function SearchResults() {
   };
 
   const mapCenter = useMemo((): [number, number] => {
-    const validCabinets = filteredCabinets.filter(
+    const validCabinets = searchResults.filter(
       (c): c is Cabinet & { latitude: string; longitude: string } =>
         c.latitude !== undefined &&
         c.longitude !== undefined &&
         !isNaN(parseFloat(c.latitude)) &&
         !isNaN(parseFloat(c.longitude))
     );
-    if (validCabinets.length === 0) {
-      return [33.5731, -7.5898]; // Default to Casablanca
-    }
+    if (validCabinets.length === 0) return [33.5731, -7.5898]; // Default to Casablanca
     const avgLat = validCabinets.reduce((sum, c) => sum + parseFloat(c.latitude), 0) / validCabinets.length;
     const avgLng = validCabinets.reduce((sum, c) => sum + parseFloat(c.longitude), 0) / validCabinets.length;
     return [avgLat, avgLng];
-  }, [filteredCabinets]);
+  }, [searchResults]);
 
   const formatCoordinates = (lat?: string, lng?: string): string => {
     if (!lat || !lng) return "Coordinates not available";
@@ -573,82 +595,43 @@ export default function SearchResults() {
       setIsModalOpen(false);
       return;
     }
-
-    if (navigator.clipboard) {
-      navigator.clipboard
-        .writeText(selectedCoordinates)
-        .then(() => {
-          toast.success("Location copied successfully", {
-            duration: 1000,
-            position: "bottom-right",
-          });
-          setIsModalOpen(false);
-        })
-        .catch((err) => {
-          console.error("Error copying with navigator.clipboard:", err);
-          try {
-            const textarea = document.createElement("textarea");
-            textarea.value = selectedCoordinates;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand("copy");
-            document.body.removeChild(textarea);
-            toast.success("Location copied successfully", {
-              duration: 1000,
-              position: "bottom-right",
-            });
-            setIsModalOpen(false);
-          } catch (fallbackErr) {
-            console.error("Error copying with execCommand:", fallbackErr);
-            toast.error("Error copying coordinates.");
-            setIsModalOpen(false);
-          }
-        });
-    } else {
-      try {
-        const textarea = document.createElement("textarea");
-        textarea.value = selectedCoordinates;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-        toast.success("Location copied successfully", {
-          duration: 1000,
-          position: "bottom-right",
-        });
+    navigator.clipboard
+      .writeText(selectedCoordinates)
+      .then(() => {
+        toast.success("Location copied successfully", { duration: 1000, position: "bottom-right" });
         setIsModalOpen(false);
-      } catch (err) {
-        console.error("Error copying with execCommand:", err);
+      })
+      .catch((err) => {
+        console.error("Error copying coordinates:", err);
         toast.error("Error copying coordinates.");
         setIsModalOpen(false);
-      }
-    }
+      });
   };
 
   const handleExpand = (cabinetId: string) => {
     setExpandedCabinetId(expandedCabinetId === cabinetId ? null : cabinetId);
     if (expandedCabinetId !== cabinetId) {
-      setStep(0); // Reset reservation steps
       setSelectedDoctor(null);
       setSelectedDate(null);
       setSelectedTime(null);
       setFormData({ firstName: "", lastName: "", reason: "" });
+      setStep(0);
     }
   };
 
   const handleReserveNow = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
-    setStep(1); // Move to calendar step
+    setStep(1);
   };
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
-    setStep(2); // Move to scheduling step
+    setStep(2);
   };
 
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time);
-    setStep(3); // Move to form step
+    setStep(3);
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -657,9 +640,8 @@ export default function SearchResults() {
   };
 
   const handleNext = () => {
-    if (step < 4) {
-      setStep(step + 1);
-    }
+    if (step < 3) setStep(step + 1);
+    else setIsSummaryModalOpen(true);
   };
 
   const handlePrev = () => {
@@ -672,8 +654,8 @@ export default function SearchResults() {
   };
 
   const handleConfirmReservation = () => {
-    // Handle final confirmation (e.g., API call)
     toast.success("Reservation confirmed successfully!");
+    setIsSummaryModalOpen(false);
     setExpandedCabinetId(null);
     setStep(0);
     setSelectedDoctor(null);
@@ -690,7 +672,15 @@ export default function SearchResults() {
         onConfirm={handleCopyLocation}
         coordinates={selectedCoordinates}
       />
-      {/* Search Bar Section */}
+      <ReservationSummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        onConfirm={handleConfirmReservation}
+        selectedDoctor={selectedDoctor}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        formData={formData}
+      />
       <section className="flex justify-end py-8">
         <div className="container px-4 mx-auto">
           <div ref={searchContainerRef} className="relative w-full max-w-2xl mx-auto">
@@ -709,19 +699,6 @@ export default function SearchResults() {
                   aria-label="Search medical services, clinics or specialties"
                 />
               </div>
-              <Select value={selectedSpecialty} onValueChange={setSelectedSpecialty}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Specialty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Specialties</SelectItem>
-                  {uniqueSpecialties.map((spec) => (
-                    <SelectItem key={spec} value={spec}>
-                      {spec}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Button
                 size="lg"
                 className="h-12 px-8 font-semibold text-white bg-secondary hover:bg-secondary/90"
@@ -730,59 +707,63 @@ export default function SearchResults() {
                 Search
               </Button>
             </div>
-
-            {/* Suggestions Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
+            {showSuggestions && searchTerm.length >= 2 && (
               <div
                 className="absolute left-0 z-20 w-full mt-1 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm"
                 style={{ maxHeight: "240px" }}
               >
-                {suggestions.map((suggestion) => (
-                  <div
-                    key={suggestion.id}
-                    className="flex items-start gap-3 p-3 text-lg cursor-pointer hover:bg-gray-100 text-foreground"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSuggestionClick(suggestion)}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`Select ${suggestion.name || "Unnamed Clinic"}`}
-                  >
-                    <img
-                      src={suggestion.image || "/placeholder.svg"}
-                      alt={`${suggestion.name || "Clinic"} image`}
-                      className="object-cover w-12 h-12 rounded-md"
-                    />
-                    <div className="flex flex-col">
-                      <span className="font-medium truncate text-foreground">
-                        {suggestion.name || "Unnamed Clinic"}
-                      </span>
-                      <span className="text-sm text-emerald-500">{suggestion.address}</span>
-                    </div>
+                {loading === "pending" ? (
+                  <div className="flex items-center gap-2 p-3 text-gray-500">
+                    <div className="w-4 h-4 border-2 border-gray-300 rounded-full border-t-gray-600 animate-spin" />
+                    Searching...
                   </div>
-                ))}
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="flex items-start gap-3 p-3 text-lg cursor-pointer hover:bg-gray-100 text-foreground"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      onKeyPress={(e) => e.key === "Enter" && handleSuggestionClick(suggestion)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Select ${suggestion.name || "Unnamed Clinic"}`}
+                    >
+                      <img
+                        src={suggestion.image || "/placeholder.svg"}
+                        alt={`${suggestion.name || "Clinic"} image`}
+                        className="object-cover w-12 h-12 rounded-md"
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-medium truncate text-foreground">
+                          {suggestion.name || "Unnamed Clinic"}
+                        </span>
+                        <span className="text-sm text-emerald-500">{suggestion.address}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-gray-500">No suggestions found for "{searchTerm}"</div>
+                )}
               </div>
             )}
           </div>
         </div>
       </section>
-
-      {/* Search Results Section */}
       <section className="container px-4 py-8 mx-auto">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          {/* Left: Cabinet Cards */}
           <div className="space-y-6">
-            {loading ? (
+            {loading === "pending" ? (
               <div className="text-center">
                 <p>Loading...</p>
               </div>
-            ) : filteredCabinets.length === 0 ? (
+            ) : searchResults.length === 0 && loading === "succeeded" ? (
               <div className="py-8 text-center text-gray-500">
                 <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                 <p className="mb-2 text-xl">No results found</p>
                 <p>Try modifying your search terms</p>
               </div>
             ) : (
-              filteredCabinets.map((cabinet) => {
+              searchResults.map((cabinet) => {
                 const distance = getDistance(cabinet, userLocation);
                 const isExpanded = expandedCabinetId === String(cabinet.id);
 
@@ -797,7 +778,7 @@ export default function SearchResults() {
                       <div className="flex items-start gap-4">
                         <img
                           src={cabinet.image || "/placeholder.svg"}
-                          alt={cabinet.name || "Clinic"}
+                          alt={`${cabinet.name || "Clinic"} image`}
                           className="object-cover w-32 h-32 rounded-lg shadow-md"
                         />
                         <div className="flex-1">
@@ -811,17 +792,19 @@ export default function SearchResults() {
                             <MapPin className="w-4 h-4 text-green-500" />
                             <span>
                               {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
-                            </span> 
-                            <span>{"  "}<LucideMapPinned className="inline-block w-4 h-4 ml-4 text-red-500" />
-                            {distance}</span>
+                            </span>
+                            <span>
+                              <LucideMapPinned className="inline-block w-4 h-4 ml-4 text-red-500" />
+                              {distance}
+                            </span>
                           </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-gray-600"> 
-                                <Mail className="w-4 h-4 text-blue-500" />
-                                <span className="font-medium">Contact:</span>
-                                <p className="inlininline-block">{cabinet.email}</p>
-                              </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Mail className="w-4 h-4 text-blue-500" />
+                              <span className="font-medium">Contact:</span>
+                              <p className="inline-block">{cabinet.email}</p>
                             </div>
+                          </div>
                           <div className="flex flex-wrap gap-2 mt-4">
                             {(cabinet.specialities || []).map((specialty: { name: string }) => (
                               <span key={specialty.name} className="px-2 py-1 text-sm text-white rounded-full bg-primary">
@@ -831,7 +814,7 @@ export default function SearchResults() {
                           </div>
                           <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
                             <div className="flex items-center gap-1 text-green-600">
-                              <Calendar className="w-4 h-4" />
+                              <Calendar1 className="w-4 h-4" />
                               <span>5 slots available</span>
                             </div>
                             <div className="flex items-center gap-1">
@@ -870,7 +853,7 @@ export default function SearchResults() {
                       onDateSelect={handleDateSelect}
                       onTimeSelect={handleTimeSelect}
                       onFormChange={handleFormChange}
-                      onNext={step === 4 ? handleConfirmReservation : handleNext}
+                      onNext={handleNext}
                       onPrev={handlePrev}
                     />
                   </Card>
@@ -878,10 +861,15 @@ export default function SearchResults() {
               })
             )}
           </div>
-
-          {/* Right: Map */}
           <div className="h-96 lg:h-[calc(100vh-200px)] sticky top-20">
-            {filteredCabinets.length > 0 ? (
+            {loading === "pending" ? (
+              <div className="flex items-center justify-center h-full border border-gray-200 rounded-lg bg-gray-50">
+                <div className="text-center text-gray-500">
+                  <MapPin className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <p>Loading map...</p>
+                </div>
+              </div>
+            ) : searchResults.length > 0 && loading === "succeeded" ? (
               <MapContainer
                 center={mapCenter}
                 zoom={13}
@@ -892,8 +880,8 @@ export default function SearchResults() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <MapBounds cabinets={filteredCabinets} />
-                {filteredCabinets
+                <MapBounds cabinets={searchResults} />
+                {searchResults
                   .filter(
                     (cabinet): cabinet is Cabinet & { latitude: string; longitude: string } =>
                       cabinet.latitude !== undefined &&

@@ -1,42 +1,58 @@
-"use client"
-import { Search } from "lucide-react"
+"use client";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { actGetAllCabinetsActive } from "@/store/cabinets/act/actGetAllCabinetsActive";
+import { useEffect, useState, useCallback } from "react";
+import { actSearch } from "@/store/cabinets/act/actSearch";
 import type { Cabinet } from "@/types/cabinet";
-
-
-
+import { debounce } from "lodash";
 
 export default function HeroSection() {
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState<Cabinet[]>([]);
   const navigate = useNavigate();
-  const{cabinets,loading}=useAppSelector((state)=>state.cabinets)
-  const dispatch = useAppDispatch()
+  const { loading, searchResults } = useAppSelector((state) => state.cabinets);
+  const dispatch = useAppDispatch();
 
-useEffect(() => {
-  dispatch(actGetAllCabinetsActive());
-}, [dispatch]);
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((term: string) => {
+      if (term.trim() && term.length >= 2) {
+        dispatch(actSearch(term));
+      }
+    }, 300),
+    [dispatch]
+  );
 
-useEffect(() => {
-  if (loading) return;
-  if (searchTerm) {
-    const filtered = cabinets.filter((cabinet) =>
-      (cabinet.name?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false) ||
-      (cabinet.description?.toLowerCase()?.includes(searchTerm.toLowerCase()) || false)
-    );
-    setSuggestions(filtered);
-  } else {
-    setSuggestions([]);
-  }
-}, [searchTerm, cabinets, loading]);
+  // Update suggestions from Redux store
+  useEffect(() => {
+    if (searchResults && searchResults.length > 0) {
+      setSuggestions(searchResults);
+    }
+  }, [searchResults]);
+
+  // Fetch suggestions when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() && searchTerm.length >= 2) {
+      debouncedSearch(searchTerm);
+    } else {
+      // Clear suggestions immediately when search term is too short
+      setSuggestions([]);
+      debouncedSearch.cancel(); // Cancel pending debounced calls
+    }
+
+    // Cleanup function to cancel debounced calls on unmount or searchTerm change
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [searchTerm, debouncedSearch]);
 
   const handleSearch = () => {
-    if (searchTerm.trim()) {
+    if (searchTerm.trim() && searchTerm.length >= 2) {
+      // Clear suggestions when navigating to search page
+      setSuggestions([]);
       navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
     }
   };
@@ -48,27 +64,27 @@ useEffect(() => {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchTerm.trim()) {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Prevent form submission
       handleSearch();
+    } else if (e.key === "Escape") {
+      // Allow user to close suggestions with Escape key
+      setSuggestions([]);
     }
   };
 
- 
-  
-
-
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       {/* Hero Section */}
       <section
         className="relative min-h-[700px] overflow-hidden bg-center bg-cover rounded-md sm:py-12 md:py-16 lg:py-20"
         style={{
-          backgroundImage: `url(https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg)`,
-          backgroundPosition: 'right',
+          backgroundImage: `url(https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg)`, // Fixed syntax error
+          backgroundPosition: "right",
         }}
       >
         {/* Overlay for better text readability */}
-        <div className="absolute inset-0 opacity-50 bg-black/75"></div>
+        <div className="absolute inset-0 opacity-50 bg-black/50"></div>
 
         {/* Main Content */}
         <div className="container relative z-10 flex flex-col items-center justify-center max-h-[500px] px-8 py-20 mx-auto text-center">
@@ -102,48 +118,63 @@ useEffect(() => {
                   size="lg"
                   className="h-12 px-8 font-semibold text-white text-md bg-secondary hover:bg-secondary/90"
                   onClick={handleSearch}
+                 
                 >
-                  Rechercher
+                  Search
                 </Button>
               </div>
 
-              {/* Suggestions Dropdown (YouTube-style) with Scroll */}
-            {suggestions.length > 0 && (
-              <div
-                className="absolute left-0 z-20 w-full mt-1 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm"
-                style={{ maxHeight: '240px' }}
-              >
-                {suggestions.map((suggestion) => (
-                  <div
-                    key={suggestion.id}
-                    className="flex items-start gap-3 p-3 text-lg cursor-pointer hover:bg-gray-100 text-foreground"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSuggestionClick(suggestion)}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`Select ${suggestion.name}`}
-                  >
-                    {/* Image with fixed size */}
-                    <img
-                      src={suggestion.image}
-                      alt={`${suggestion.name} image`}
-                      className="object-cover w-12 h-12 rounded-md"
-                    />
-                    {/* Text container for title and address */}
-                    <div className="flex flex-col">
-                      <span className="font-medium truncate text-foreground">{suggestion.name}</span>
-                      <span className="text-sm text-emerald-500">{suggestion.address}</span>
-                    </div>
+              {/* Suggestions Dropdown */}
+            {searchTerm.length >= 2 && loading === "pending" ? (
+                  <div className="absolute left-0 z-20 w-full p-3 mt-1 text-gray-500 border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm">
+                    Loading suggestions...
                   </div>
-                ))}
-              </div>
-            )}
+                ) : searchTerm.length >= 2 && loading === "succeeded" && suggestions.length > 0 ? (
+                  <div
+                    className="absolute left-0 z-20 w-full mt-1 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm"
+                    style={{ maxHeight: "240px" }}
+                  >
+                    {suggestions.map((suggestion) => (
+                      <div
+                        key={suggestion.id}
+                        className="flex items-start gap-3 p-3 text-lg transition-colors cursor-pointer hover:bg-gray-100 text-foreground"
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        onKeyPress={(e) => e.key === "Enter" && handleSuggestionClick(suggestion)}
+                        tabIndex={0}
+                        role="button"
+                        aria-label={`Select ${suggestion.name}`}
+                      >
+                        <img
+                          src={suggestion.image}
+                          alt={`${suggestion.name} image`}
+                          className="object-cover w-12 h-12 rounded-md"
+                          onError={(e) => {
+                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(suggestion.name)}`;
+                          }}
+                        />
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="font-medium truncate text-foreground">{suggestion.name}</span>
+                          <span className="text-sm truncate text-emerald-500">
+                            {suggestion.address}, {suggestion.city}
+                          </span>
+                          {suggestion.specialities && suggestion.specialities.length > 0 && (
+                            <span className="text-xs text-gray-500 truncate">
+                              {suggestion.specialities.map((s) => s.name).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchTerm.length >= 2 && loading === "succeeded" ? (
+                  <div className="absolute left-0 z-20 w-full p-3 mt-1 text-gray-500 border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm">
+                    No suggestions found
+                  </div>
+                ) : null}
             </div>
           </div>
         </div>
       </section>
-
-     
     </div>
-  )
+  );
 }
