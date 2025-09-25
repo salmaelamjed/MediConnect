@@ -1,13 +1,15 @@
 "use client";
-import { Search, MapPin, Copy, Clock3, LucideMapPinned, Clock, CheckCircle2, User, Stethoscope, Mail, Calendar as Calendar1 } from "lucide-react";
+import { Search, MapPin, Copy, Clock, LucideMapPinned, Calendar as Calendar1, CheckCircle2, User, Stethoscope, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { actSearch } from "@/store/cabinets/act/actSearch";
+import { actGetAvailableSlots, actCreateReservation } from "@/store/reservations/reservationsSlice";
 import type { Cabinet } from "@/types/cabinet";
 import { debounce } from "lodash";
+import { format } from "date-fns";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L, { Marker as LeafletMarker, type LatLngExpression } from "leaflet";
@@ -40,6 +42,8 @@ const greenIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+
+
 // Copy Confirmation Modal
 interface CopyConfirmationModalProps {
   isOpen: boolean;
@@ -50,8 +54,8 @@ interface CopyConfirmationModalProps {
 
 export interface Doctor {
   id: number;
-  user_id?:number;
-  cabinet_id?:number;
+  user_id?: number;
+  cabinet_id?: number;
   name: string;
   license_number: string;
   bio: string;
@@ -67,13 +71,6 @@ export interface Doctor {
   };
 }
 
-export interface Speciality {
-  id: number;
-  name: string;
-  description: string;
-  icon: string;
-}
-
 function CopyConfirmationModal({ isOpen, onClose, onConfirm, coordinates }: CopyConfirmationModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -83,37 +80,26 @@ function CopyConfirmationModal({ isOpen, onClose, onConfirm, coordinates }: Copy
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div
-        ref={modalRef}
-        tabIndex={-1}
-        className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg outline-none"
-      >
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
         <p className="mb-4 text-gray-700">
           The following coordinates are ready to be copied: <span className="font-mono">{coordinates}</span>
         </p>
         <div className="flex justify-end gap-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="px-4 py-2"
-            aria-label="Cancel copying coordinates"
-          >
+          <Button variant="outline" onClick={onClose} aria-label="Cancel copying coordinates">
             Cancel
           </Button>
           <Button
-            className="px-4 py-2 text-white bg-primary hover:bg-primary/90"
+            className="text-white bg-primary hover:bg-primary/90"
             onClick={onConfirm}
             aria-label="Confirm copying coordinates"
           >
             Copy
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -183,17 +169,16 @@ const getDistance = (cabinet: Cabinet, userLocation: { lat: number; lng: number 
   return distance >= 1 ? `${distance.toFixed(1)} km` : `${(distance * 1000).toFixed(0)} m`;
 };
 
-
-
 // Reservation Summary Modal
 interface ReservationSummaryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (formData: FormData) => void;
   selectedDoctor: Doctor | null;
   selectedDate: Date | null;
   selectedTime: string | null;
   formData: { firstName: string; lastName: string; reason: string };
+  selectedCabinet: Cabinet | null;
 }
 
 function ReservationSummaryModal({
@@ -204,8 +189,21 @@ function ReservationSummaryModal({
   selectedDate,
   selectedTime,
   formData,
+  selectedCabinet,
 }: ReservationSummaryModalProps) {
-  if (!isOpen || !selectedDoctor || !selectedDate || !selectedTime) return null;
+  if (!isOpen || !selectedDoctor || !selectedDate || !selectedTime || !selectedCabinet) return null;
+
+  const handleConfirm = () => {
+    const reservationData = new FormData();
+    reservationData.append("reservation_date", format(selectedDate, "yyyy-MM-dd"));
+    reservationData.append("reservation_time", selectedTime);
+    reservationData.append("cabinet_id", selectedCabinet.id.toString());
+    reservationData.append("doctor_id", selectedDoctor.id.toString());
+    reservationData.append("first_name", formData.firstName);
+    reservationData.append("last_name", formData.lastName);
+    reservationData.append("reason", formData.reason);
+    onConfirm(reservationData);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -221,11 +219,13 @@ function ReservationSummaryModal({
             <span className="text-gray-600">Doctor:</span>
             <span className="font-medium">{selectedDoctor.name}</span>
             <span className="text-gray-600">Date:</span>
-            <span className="font-medium">{selectedDate.toLocaleDateString()}</span>
+            <span className="font-medium">{format(selectedDate, "PPP")}</span>
             <span className="text-gray-600">Time:</span>
             <span className="font-medium">{selectedTime}</span>
             <span className="text-gray-600">Patient:</span>
             <span className="font-medium">{formData.firstName} {formData.lastName}</span>
+            <span className="text-gray-600">Reason:</span>
+            <span className="font-medium">{formData.reason || "Not specified"}</span>
             <span className="text-gray-600">Price:</span>
             <span className="font-semibold text-green-600">{selectedDoctor.consultation_fees} MAD</span>
           </div>
@@ -234,7 +234,7 @@ function ReservationSummaryModal({
               Cancel
             </Button>
             <Button
-              onClick={onConfirm}
+              onClick={handleConfirm}
               className="text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
             >
               Confirm Reservation
@@ -280,6 +280,21 @@ function ExpandedCabinetDetails({
   onNext,
   onPrev,
 }: ExpandedCabinetDetailsProps) {
+  const dispatch = useAppDispatch();
+  const { availableSlots, slotsLoading, slotsError } = useAppSelector((state) => state.reservations);
+
+  useEffect(() => {
+    if (step === 2 && selectedDoctor && selectedDate) {
+      dispatch(
+        actGetAvailableSlots({
+          date: format(selectedDate, "yyyy-MM-dd"),
+          cabinet_id: cabinet.id,
+          doctor_id: selectedDoctor.id,
+        })
+      );
+    }
+  }, [step, selectedDoctor, selectedDate, cabinet.id, dispatch]);
+
   if (!isExpanded) return null;
 
   return (
@@ -297,7 +312,7 @@ function ExpandedCabinetDetails({
               <p className="mb-1 text-base text-gray-600">Select a date for {selectedDoctor.name}</p>
             )}
             {step === 2 && selectedDate && selectedDoctor && (
-              <p className="mb-1 text-base text-gray-600">Select a time for {selectedDate.toLocaleDateString()}</p>
+              <p className="mb-1 text-base text-gray-600">Select a time for {format(selectedDate, "PPP")}</p>
             )}
             {step === 3 && selectedTime && selectedDate && selectedDoctor && (
               <p className="mb-1 text-base text-gray-600">Fill in patient details</p>
@@ -323,25 +338,129 @@ function ExpandedCabinetDetails({
                   mode="single"
                   selected={selectedDate || undefined}
                   onSelect={(date) => date && onDateSelect(date)}
-                  className="border rounded-md shadow-sm "
+                  className="border rounded-md shadow-sm"
                   disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 />
               </div>
             )}
-            {step === 2 && selectedDate && selectedDoctor && (
-              <div className="grid w-full max-w-md grid-cols-4 gap-2">
-                {["09:00", "10:00", "14:00", "15:00", "16:00", "11:30", "10:30", "15:30"].map((time) => (
-                  <Badge
-                    key={time}
-                    variant={selectedTime === time ? "success" : "outline"}
-                    onClick={() => onTimeSelect(time)}
-                    className="justify-center w-full py-2 text-sm text-center cursor-pointer"
-                  >
-                    {time}
-                  </Badge>
-                ))}
-              </div>
-            )}
+{step === 2 && selectedDate && selectedDoctor && (
+  <div className="w-full max-w-lg">
+    {slotsLoading === "pending" ? (
+      <div className="flex items-center justify-center w-full py-8">
+        <div className="w-5 h-5 mr-3 border-2 border-gray-300 rounded-full border-t-blue-600 animate-spin" />
+        <span className="text-gray-600">Loading available slots...</span>
+      </div>
+    ) : slotsError ? (
+      <div className="p-4 text-center border border-red-200 rounded-lg bg-red-50">
+        <p className="text-sm text-red-600">{slotsError}</p>
+      </div>
+    ) : (
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {/* Generate time slots based on doctor's working hours */}
+        {(() => {
+          const timeSlots = [];
+          
+          // Parse doctor's working hours
+          const parseTime = (timeString: string): { hour: number; minute: number } | null => {
+            if (!timeString) return null;
+            
+            // Handle different time formats (HH:MM, HH:MM:SS, etc.)
+            const timeParts = timeString.split(':');
+            if (timeParts.length < 2) return null;
+            
+            const hour = parseInt(timeParts[0], 10);
+            const minute = parseInt(timeParts[1], 10);
+            
+            if (isNaN(hour) || isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+              return null;
+            }
+            
+            return { hour, minute };
+          };
+
+          const startTime = parseTime(selectedDoctor.start_time);
+          const endTime = parseTime(selectedDoctor.end_time);
+          
+          // Fallback to default hours if parsing fails
+          const defaultStart = { hour: 8, minute: 0 };
+          const defaultEnd = { hour: 18, minute: 0 };
+          
+          const workingStart = startTime || defaultStart;
+          const workingEnd = endTime || defaultEnd;
+          
+          // Generate time slots in 30-minute intervals
+          let currentHour = workingStart.hour;
+          let currentMinute = workingStart.minute;
+          
+          while (
+            currentHour < workingEnd.hour || 
+            (currentHour === workingEnd.hour && currentMinute < workingEnd.minute)
+          ) {
+            const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+            const isAvailable = availableSlots.includes(timeString);
+            const isSelected = selectedTime === timeString;
+            
+            timeSlots.push(
+              <button
+                key={timeString}
+                onClick={() => isAvailable ? onTimeSelect(timeString) : null}
+                disabled={!isAvailable}
+                className={`
+                  relative px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200
+                  ${isSelected 
+                    ? 'bg-blue-100 border-blue-300 text-blue-800 shadow-sm' 
+                    : isAvailable 
+                      ? 'bg-green-50 border-green-200 text-green-800 hover:bg-green-100 hover:border-green-300 cursor-pointer' 
+                      : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+                  }
+                  ${isAvailable && !isSelected ? 'hover:shadow-sm' : ''}
+                `}
+                title={
+                  isSelected 
+                    ? 'Currently selected time' 
+                    : isAvailable 
+                      ? 'Click to select this time slot' 
+                      : 'This time slot is not available'
+                }
+              >
+                <span className="block">{timeString}</span>
+                {isSelected && (
+                  <div className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full -top-1 -right-1"></div>
+                )}
+                {!isAvailable && !isSelected && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-1 h-full transform rotate-45 bg-gray-400 opacity-30"></div>
+                  </div>
+                )}
+              </button>
+            );
+            
+            // Increment by 30 minutes
+            currentMinute += 30;
+            if (currentMinute >= 60) {
+              currentHour += 1;
+              currentMinute = 0;
+            }
+          }
+          
+          return timeSlots;
+        })()}
+      </div>
+    )}
+    {availableSlots.length === 0 && slotsLoading !== "pending" && !slotsError && (
+      <div className="p-6 text-center border border-yellow-200 rounded-lg bg-yellow-50">
+        <Clock className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
+        <p className="mb-1 text-sm font-medium text-yellow-800">No Available Slots</p>
+        <p className="text-xs text-yellow-700">
+          Please try selecting a different date or check back later.
+        </p>
+        <p className="mt-2 text-xs text-gray-600">
+          Doctor's working hours: {selectedDoctor.start_time} - {selectedDoctor.end_time}
+        </p>
+      </div>
+    )}
+  </div>
+)}
             {step === 3 && selectedTime && selectedDate && selectedDoctor && (
               <div className="relative w-full max-w-md space-y-3">
                 <div className="relative">
@@ -389,6 +508,11 @@ function ExpandedCabinetDetails({
               <Button
                 onClick={onNext}
                 className="px-4 py-2 text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                disabled={
+                  (step === 1 && !selectedDate) ||
+                  (step === 2 && !selectedTime) ||
+                  (step === 3 && (!formData.firstName || !formData.lastName))
+                }
               >
                 Next
                 <Clock className="w-4 h-4 ml-2" />
@@ -414,6 +538,7 @@ export default function SearchResults() {
   const [selectedCoordinates, setSelectedCoordinates] = useState<string>("");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [expandedCabinetId, setExpandedCabinetId] = useState<string | null>(null);
+  const [selectedCabinet, setSelectedCabinet] = useState<Cabinet | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -424,22 +549,22 @@ export default function SearchResults() {
   const inputRef = useRef<HTMLInputElement>(null);
   const markerRefs = useRef<{ [key: string]: LeafletMarker }>({});
   const navigate = useNavigate();
-  const { searchResults, loading } = useAppSelector((state) => state.cabinets);
   const dispatch = useAppDispatch();
+  const { searchResults, loading } = useAppSelector((state) => state.cabinets);
 
-  // Debounced search function for suggestions only
+  // Debounced search function for suggestions
   const debouncedSearch = useCallback(
     (term: string) => {
       if (term.trim() && term.length >= 2) {
         dispatch(actSearch(term))
           .unwrap()
           .then((result) => {
-            console.log("Suggestions fetched:", result);
             setShowSuggestions(true);
+            console.log(result);
           })
           .catch((error) => {
-            console.error("Suggestions fetch failed:", error);
             toast.error("Failed to fetch suggestions.");
+            console.log(error);
           });
       } else {
         dispatch({ type: "cabinets/clearSearchResults" });
@@ -449,13 +574,9 @@ export default function SearchResults() {
     [dispatch]
   );
 
-  // Create debounced version of the search function
-  const debouncedSearchHandler = useMemo(
-    () => debounce(debouncedSearch, 300),
-    [debouncedSearch]
-  );
+  const debouncedSearchHandler = useMemo(() => debounce(debouncedSearch, 300), [debouncedSearch]);
 
-  // Trigger search for results only on appliedSearchTerm change
+  // Trigger search for results on appliedSearchTerm change
   useEffect(() => {
     if (appliedSearchTerm && appliedSearchTerm.length >= 2) {
       dispatch(actSearch(appliedSearchTerm))
@@ -464,8 +585,8 @@ export default function SearchResults() {
           console.log("Search results fetched:", result);
         })
         .catch((error) => {
-          console.error("Search failed:", error);
           toast.error("Failed to fetch search results.");
+          console.log(error);
         });
     } else {
       dispatch({ type: "cabinets/clearSearchResults" });
@@ -507,9 +628,9 @@ export default function SearchResults() {
       navigator.geolocation.getCurrentPosition(
         (position) => setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }),
         (error) => {
-          console.error("Error getting user location:", error);
           setUserLocation({ lat: 33.5731, lng: -7.5898 }); // Fallback to Casablanca
           toast.info("Unable to retrieve your position. Using Casablanca as default.");
+          console.log(error);
         }
       );
     } else {
@@ -526,8 +647,7 @@ export default function SearchResults() {
   }, [hoveredCabinetId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
+    setSearchTerm(e.target.value);
   };
 
   const handleInputFocus = () => {
@@ -601,25 +721,33 @@ export default function SearchResults() {
         toast.success("Location copied successfully", { duration: 1000, position: "bottom-right" });
         setIsModalOpen(false);
       })
-      .catch((err) => {
-        console.error("Error copying coordinates:", err);
+      .catch(() => {
         toast.error("Error copying coordinates.");
         setIsModalOpen(false);
       });
   };
 
-  const handleExpand = (cabinetId: string) => {
-    setExpandedCabinetId(expandedCabinetId === cabinetId ? null : cabinetId);
-    if (expandedCabinetId !== cabinetId) {
-      setSelectedDoctor(null);
-      setSelectedDate(null);
-      setSelectedTime(null);
-      setFormData({ firstName: "", lastName: "", reason: "" });
-      setStep(0);
+  const handleExpand = (cabinet: Cabinet) => {
+    const cabinetId = String(cabinet.id);
+    if (expandedCabinetId === cabinetId) {
+      setExpandedCabinetId(null);
+      setSelectedCabinet(null);
+    } else {
+      setExpandedCabinetId(cabinetId);
+      setSelectedCabinet(cabinet);
     }
+    setSelectedDoctor(null);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setFormData({ firstName: "", lastName: "", reason: "" });
+    setStep(0);
   };
 
-  const handleReserveNow = (doctor: Doctor) => {
+  const handleReserveNow = (doctor: Doctor, cabinet: Cabinet) => {
+    if (doctor.cabinet_id && doctor.cabinet_id !== cabinet.id) {
+      toast.error("Doctor is not associated with this cabinet.");
+      return;
+    }
     setSelectedDoctor(doctor);
     setStep(1);
   };
@@ -653,15 +781,21 @@ export default function SearchResults() {
     }
   };
 
-  const handleConfirmReservation = () => {
-    toast.success("Reservation confirmed successfully!");
-    setIsSummaryModalOpen(false);
-    setExpandedCabinetId(null);
-    setStep(0);
-    setSelectedDoctor(null);
-    setSelectedDate(null);
-    setSelectedTime(null);
-    setFormData({ firstName: "", lastName: "", reason: "" });
+  const handleConfirmReservation = async (reservationData: FormData) => {
+    try {
+      await dispatch(actCreateReservation(reservationData)).unwrap();
+      toast.success("Reservation confirmed successfully!", { position: "bottom-right" });
+      setIsSummaryModalOpen(false);
+      setExpandedCabinetId(null);
+      setSelectedCabinet(null);
+      setStep(0);
+      setSelectedDoctor(null);
+      setSelectedDate(null);
+      setSelectedTime(null);
+      setFormData({ firstName: "", lastName: "", reason: "" });
+    } catch (error) {
+      toast.error(`Failed to confirm reservation: ${error}`, { position: "bottom-right" });
+    }
   };
 
   return (
@@ -680,6 +814,7 @@ export default function SearchResults() {
         selectedDate={selectedDate}
         selectedTime={selectedTime}
         formData={formData}
+        selectedCabinet={selectedCabinet}
       />
       <section className="flex justify-end py-8">
         <div className="container px-4 mx-auto">
@@ -815,18 +950,18 @@ export default function SearchResults() {
                           <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
                             <div className="flex items-center gap-1 text-green-600">
                               <Calendar1 className="w-4 h-4" />
-                              <span>5 slots available</span>
+                              <span>Dynamic slots available</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Clock3 className="w-4 h-4" />
-                              <span>Next: 2:30 PM</span>
+                              <Clock className="w-4 h-4" />
+                              <span>Check availability</span>
                             </div>
                           </div>
                           <div className="flex justify-end gap-3 mt-4">
                             <Button
                               variant="outline"
                               className="px-4 py-2 text-blue-600 transition-colors border-blue-600 hover:bg-blue-50"
-                              onClick={() => handleExpand(String(cabinet.id))}
+                              onClick={() => handleExpand(cabinet)}
                             >
                               {isExpanded ? "Collapse" : "More info"}
                             </Button>
@@ -843,8 +978,8 @@ export default function SearchResults() {
                     <ExpandedCabinetDetails
                       cabinet={cabinet}
                       isExpanded={isExpanded}
-                      onToggleExpand={() => handleExpand(String(cabinet.id))}
-                      onReserveDoctor={handleReserveNow}
+                      onToggleExpand={() => handleExpand(cabinet)}
+                      onReserveDoctor={(doctor) => handleReserveNow(doctor, cabinet)}
                       step={step}
                       selectedDoctor={selectedDoctor}
                       selectedDate={selectedDate}

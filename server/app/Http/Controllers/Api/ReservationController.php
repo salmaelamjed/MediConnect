@@ -54,102 +54,158 @@ class ReservationController extends Controller
     /**
      * Create a new reservation (Patient only).
      */
-    public function store(Request $request)
-    {
-        $user = Auth::user();
 
-        if ($user->role !== 'patient') {
-            return response()->json(['message' => 'Only patients can make reservations.'], 403);
+public function store(Request $request)
+{
+    $user = Auth::user();
+
+    // Restrict to patients only
+    if ($user->role !== 'patient') {
+        return response()->json(['message' => 'Only patients can make reservations.'], 403);
+    }
+
+    // Validate input
+    $validator = Validator::make($request->all(), [
+        'doctor_id' => 'required|exists:doctors,id',
+        'cabinet_id' => 'required|exists:cabinets,id',
+        'reservation_date' => 'required|date|after:tomorrow',
+        'reservation_time' => [
+            'required',
+            'date_format:H:i',
+            // Ensure time is in valid increments (e.g., every 15 minutes)
+            function ($attribute, $value, $fail) {
+                $minutes = Carbon::parse($value)->minute;
+                if ($minutes % 15 !== 0) {
+                    $fail('The reservation time must be in 15-minute increments (e.g., 09:00, 09:15).');
+                }
+            },
+        ],
+        'reason' => 'nullable|string|max:1000',
+        'patient_email' => 'nullable|email',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    try {
+        DB::beginTransaction();
+
+        $patient = Patient::where('user_id', $user->id)->firstOrFail();
+
+        // Lock the reservations table to prevent race conditions
+        $confirmedReservation = Reservation::where('doctor_id', $request->doctor_id)
+            ->where('reservation_date', $request->reservation_date)
+            ->where('reservation_time', $request->reservation_time)
+            ->where('status', 'confirmed')
+            ->lockForUpdate() // Prevent concurrent modifications
+            ->first();
+
+        if ($confirmedReservation) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'This time slot is already confirmed and no longer available.',
+            ], 409);
         }
 
-        $validator = Validator::make($request->all(), [
-            'doctor_id' => 'required|exists:doctors,id',
-            'cabinet_id' => 'required|exists:cabinets,id',
-            'reservation_date' => 'required|date|after:today',
-            'reservation_time' => 'required|date_format:H:i',
-            'reason' => 'nullable|string|max:1000',
-            'patient_email' => 'nullable|email'
+        // Validate doctor and cabinet availability
+        $schedule = $this->validateSchedule(
+            $request->doctor_id,
+            $request->cabinet_id,
+            $request->reservation_date,
+            $request->reservation_time
+        );
+
+        if (!$schedule) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'The requested time slot is not available for this doctor or cabinet.',
+            ], 409);
+        }
+
+        // Check if the patient has a reservation on the same date
+        $existingDateReservation = Reservation::where('patient_id', $patient->id)
+            ->where('reservation_date', $request->reservation_date)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->first();
+
+        if ($existingDateReservation) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have a reservation on this date.',
+            ], 409);
+        }
+
+        // Check if the patient has a reservation for the same time slot
+        $patientExistingReservation = Reservation::where('patient_id', $patient->id)
+            ->where('doctor_id', $request->doctor_id)
+            ->where('reservation_date', $request->reservation_date)
+            ->where('reservation_time', $request->reservation_time)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->first();
+
+        if ($patientExistingReservation) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'You already have a reservation for this time slot.',
+            ], 409);
+        }
+
+        // Create the pending reservation
+        $reservation = Reservation::create([
+            'patient_id' => $patient->id,
+            'doctor_id' => $request->doctor_id,
+            'cabinet_id' => $request->cabinet_id,
+            'reservation_date' => Carbon::parse($request->reservation_date)->toDateString(),
+            'reservation_time' => Carbon::parse($request->reservation_time)->format('H:i'),
+            'reason' => $request->reason,
+            'patient_email' => $request->patient_email ?? $user->email,
+            'status' => 'pending',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        // Notify the doctor
+        $doctor = Doctor::with('user')->findOrFail($request->doctor_id);
+        $this->createNotification(
+            $doctor->user_id,
+            'New Appointment Request',
+            "Patient {$patient->name} has requested an appointment on " .
+            Carbon::parse($request->reservation_date)->format('d/m/Y') .
+            " at " . Carbon::parse($request->reservation_time)->format('H:i'),
+            'appointment_confirmation',
+            $reservation->id
+        );
 
-        try {
-            DB::beginTransaction();
+        DB::commit();
 
-            $patient = Patient::where('user_id', $user->id)->firstOrFail();
-            $schedule = $this->validateSchedule(
-                $request->doctor_id,
-                $request->cabinet_id,
-                $request->reservation_date,
-                $request->reservation_time
-            );
+        return response()->json([
+            'success' => true,
+            'message' => 'Your appointment request has been sent to the doctor.',
+            'data' => $reservation->load(['doctor.user', 'cabinet', 'patient.user']),
+        ], 201);
 
-            if (!$schedule) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'The requested slot is not available.'
-                ], 409);
-            }
-
-            // Check existing reservations
-            $existingReservations = Reservation::where('doctor_id', $request->doctor_id)
-                ->where('reservation_date', $request->reservation_date)
-                ->where('reservation_time', $request->reservation_time)
-                ->whereIn('status', ['pending', 'confirmed'])
-                ->count();
-
-            if ($existingReservations >= $schedule->max_patients_per_slot) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This slot is fully booked.'
-                ], 409);
-            }
-
-            $reservation = Reservation::create([
-                'patient_id' => $patient->id,
-                'doctor_id' => $request->doctor_id,
-                'cabinet_id' => $request->cabinet_id,
-                'reservation_date' => $request->reservation_date,
-                'reservation_time' => $request->reservation_time,
-                'reason' => $request->reason,
-                'patient_email' => $request->patient_email ?? $user->email,
-                'status' => 'pending'
-            ]);
-
-            $doctor = Doctor::with('user')->findOrFail($request->doctor_id);
-            $notification = $this->createNotification(
-                $doctor->user_id,
-                'New Appointment Request',
-                // French: "Le patient {$patient->name} souhaite prendre un rendez-vous le..."
-                "Patient {$patient->name} has requested an appointment on " .
-                Carbon::parse($request->reservation_date)->format('d/m/Y') .
-                " at " . Carbon::parse($request->reservation_time)->format('H:i'),
-                'appointment_confirmation',
-                $reservation->id
-            );
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Your appointment request has been sent to the doctor.',
-                'data' => $reservation->load(['doctor.user', 'cabinet', 'patient.user'])
-            ], 201);
-
-        } catch (\Exception $e) {
-            DB::rollback();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error creating reservation',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Patient or doctor not found.',
+        ], 404);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while creating the reservation.',
+            'error' => $e->getMessage(), // Consider removing in production for security
+        ], 500);
     }
+}
+
 
     /**
      * Confirm a reservation (Doctor only).
@@ -484,7 +540,7 @@ public function getAvailableSlots(Request $request, $doctorId)
         $existingReservations = Reservation::where('doctor_id', $doctorId)
             ->where('cabinet_id', $request->cabinet_id)
             ->where('reservation_date', $date->toDateString())
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereIn('status', ['confirmed'])
             ->select(DB::raw('TIME_FORMAT(reservation_time, "%H:%i") as reservation_time'), DB::raw('count(*) as reservation_count'))
             ->groupBy('reservation_time')
             ->pluck('reservation_count', 'reservation_time')

@@ -14,6 +14,7 @@ import auth from "./auth/authSlice";
 import forgotPassword from "./auth/forgotPasswordSlice "; 
 import specialities from './specialities/specialitiesSlice'
 import cabinets from './cabinets/cabinetsSlice'
+import reservations from './reservations/reservationsSlice'
 
 const authPersistConfig = {
   key: "auth",
@@ -26,6 +27,7 @@ const rootReducer = combineReducers({
   forgotPassword,
   specialities,
   cabinets,
+  reservations,
 });
 
 const store = configureStore({

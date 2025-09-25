@@ -19,6 +19,7 @@ use App\Mail\VerificationCode;
 use App\Models\Cabinet;
 use App\Models\CabinetSpeciality;
 use App\Models\Speciality;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -31,69 +32,22 @@ class AuthController extends Controller
 
     /**
      * Register a new user and send verification code
+     * Ensures ALL validation passes before creating ANY data
      */
     public function register(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:admin,doctor,patient',
-            'name' => $request->role === 'doctor' || $request->role === 'patient' ? 'required|string' : 'nullable|string',
+        // Step 1: Complete validation before ANY data creation
+        $this->validateRegistrationData($request);
 
-            // Validation for doctors
-            'speciality_id' => $request->role === 'doctor' ? 'required|exists:specialities,id' : 'nullable',
-            'license_number' => $request->role === 'doctor' ? 'required|string|unique:doctors,license_number' : 'nullable|string',
-            'bio' => $request->role === 'doctor' ? 'nullable|string' : 'nullable|string',
-            'consultation_fees' => $request->role === 'doctor' ? 'required|numeric|min:0' : 'nullable|numeric',
-            'start_time' => $request->role === 'doctor' ? 'required|date_format:H:i' : 'nullable',
-            'end_time' => $request->role === 'doctor' ? 'required|date_format:H:i|after:start_time' : 'nullable',
-            'available_days' => $request->role === 'doctor' ? 'required|array|min:1' : 'nullable',
-            'available_days.*' => $request->role === 'doctor' ? 'required|string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche' : 'nullable',
+        // Step 2: Additional business logic validations
+        $this->validateBusinessRules($request);
 
-            // Validation for cabinet (if the doctor creates a new cabinet)
-            'cabinet_option' => $request->role === 'doctor' ? 'required|in:new,existing' : 'nullable',
-            'cabinet_id' => $request->role === 'doctor' && $request->cabinet_option === 'existing' ? 'required|exists:cabinets,id' : 'nullable',
+        // Step 3: Pre-validate external dependencies (like geocoding)
+        $geocodeData = $this->preValidateGeocoding($request);
 
-            // Fields for new cabinet
-            'cabinet_name' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string' : 'nullable|string',
-            'cabinet_description' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'nullable|string' : 'nullable|string',
-            'cabinet_address' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string|min:10' : 'nullable|string',
-            'cabinet_city' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string' : 'nullable|string',
-            'cabinet_postal_code' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string' : 'nullable|string',
-            'cabinet_email' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'nullable|email' : 'nullable|email',
-            'cabinet_opening_time' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|date_format:H:i' : 'nullable',
-            'cabinet_closing_time' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|date_format:H:i|after:cabinet_opening_time' : 'nullable',
-            'cabinet_working_days' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|array|min:1' : 'nullable',
-            'cabinet_working_days.*' => $request->role === 'doctor' && $request->cabinet_option === 'new' ? 'required|string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche' : 'nullable',
-
-            // Validation for patients
-            'date_of_birth' => $request->role === 'patient' ? 'required|date|before:today' : 'nullable|date',
-            'gender' => $request->role === 'patient' ? 'required|in:Female,Male' : 'nullable|in:Female,Male',
-            'address' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'city' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'code_postal' => $request->role === 'patient' ? 'required|string' : 'nullable|string',
-            'medical_history' => $request->role === 'patient' ? 'nullable|string' : 'nullable|string',
-            'allergies' => $request->role === 'patient' ? 'nullable|string' : 'nullable|string',
-        ]);
-
-        // Custom validation for time fields
-        if ($request->role === 'doctor') {
-            if ($request->cabinet_option === 'new' &&
-                $request->cabinet_opening_time >= $request->cabinet_closing_time) {
-                return response()->json([
-                    'error' => 'L\'heure de fermeture du cabinet doit être après l\'heure d\'ouverture'
-                ], 400);
-            }
-
-            if ($request->start_time >= $request->end_time) {
-                return response()->json([
-                    'error' => 'L\'heure de fin de consultation doit être après l\'heure de début'
-                ], 400);
-            }
-        }
-
+        // Step 4: Only after ALL validations pass, create data in transaction
         try {
-            return DB::transaction(function () use ($request) {
+            return DB::transaction(function () use ($request, $geocodeData) {
                 // Generate 6-digit verification code
                 $verificationCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -102,6 +56,7 @@ class AuthController extends Controller
                     ? ($request->cabinet_option === 'new' ? $request->cabinet_name : $request->name)
                     : $request->name;
 
+                // Create user
                 $user = User::create([
                     'email' => $request->email,
                     'password' => Hash::make($request->password),
@@ -112,124 +67,15 @@ class AuthController extends Controller
                     'verification_code_expires_at' => now()->addHours(24),
                 ]);
 
+                // Create role-specific data
                 if ($request->role === 'patient') {
-                    Patient::create([
-                        'user_id' => $user->id,
-                        'name' => $request->name,
-                        'date_of_birth' => $request->date_of_birth,
-                        'gender' => $request->gender,
-                        'address' => $request->address,
-                        'city' => $request->city,
-                        'code_postal' => $request->code_postal,
-                        'medical_history' => $request->medical_history,
-                        'allergies' => $request->allergies,
-                    ]);
+                    $this->createPatient($user, $request);
                 } elseif ($request->role === 'doctor') {
-                    $cabinetId = null;
-
-                    // Handle cabinet
-                    if ($request->cabinet_option === 'new') {
-                        // Create new cabinet
-                        $geocodeResults = $this->nominatimService->geocode($request->cabinet_address, $request->cabinet_city, $request->cabinet_postal_code);
-
-                        if (empty($geocodeResults)) {
-                            Log::warning('Geocoding failed for address: ' . $request->cabinet_address);
-                            return response()->json([
-                                'message' => 'Échec de l\'enregistrement',
-                                'error' => 'Impossible de géocoder l\'adresse du cabinet. Veuillez vérifier l\'adresse et inclure des détails comme le numéro de rue ou un point de repère.',
-                            ], 400);
-                        }
-
-                        $firstResult = $geocodeResults[0];
-
-                        $cabinet = Cabinet::create([
-                            'owner_id' => $user->id,
-                            'name' => $request->cabinet_name,
-                            'description' => $request->cabinet_description,
-                            'image' => "https://i.pinimg.com/1200x/c6/3e/4b/c63e4baabab225b16b85b9e7bcc05069.jpg",
-                            'address' => $request->cabinet_address,
-                            'city' => $request->cabinet_city,
-                            'postal_code' => $request->cabinet_postal_code,
-                            'email' => $request->cabinet_email,
-                            'opening_time' => $request->cabinet_opening_time,
-                            'closing_time' => $request->cabinet_closing_time,
-                            'working_days' => $request->cabinet_working_days,
-                            'latitude' => $firstResult['lat'] ?? null,
-                            'longitude' => $firstResult['lon'] ?? null,
-                            'is_active' => true,
-                        ]);
-
-                        $cabinetId = $cabinet->id;
-
-                        // Associate speciality with cabinet
-                        CabinetSpeciality::create([
-                            'cabinet_id' => $cabinet->id,
-                            'speciality_id' => $request->speciality_id,
-                        ]);
-                    } elseif ($request->cabinet_option === 'existing') {
-                        $cabinetId = $request->cabinet_id;
-
-                        // Check if cabinet supports this speciality
-                        $cabinetSpeciality = CabinetSpeciality::where('cabinet_id', $cabinetId)
-                            ->where('speciality_id', $request->speciality_id)
-                            ->first();
-
-                        if (!$cabinetSpeciality) {
-                            // Add speciality to cabinet if it doesn't exist
-                            CabinetSpeciality::create([
-                                'cabinet_id' => $cabinetId,
-                                'speciality_id' => $request->speciality_id,
-                            ]);
-                        }
-                    }
-
-                    // Create doctor profile
-                    $doctor = Doctor::create([
-                        'user_id' => $user->id,
-                        'speciality_id' => $request->speciality_id,
-                        'cabinet_id' => $cabinetId,
-                        'name' => $request->name,
-                        'license_number' => $request->license_number,
-                        'bio' => $request->bio,
-                        'consultation_fees' => $request->consultation_fees,
-                        'start_time' => $request->start_time,
-                        'end_time' => $request->end_time,
-                        'available_days' => $request->available_days,
-                        'is_active' => true,
-                    ]);
-
-                    // Create schedules for the doctor
-                    foreach ($request->available_days as $day) {
-                        Schedule::create([
-                            'doctor_id' => $doctor->id,
-                            'cabinet_id' => $cabinetId,
-                            'day_of_week' => $this->translateDay($day), // Convert French to English (e.g., 'lundi' to 'monday')
-                            'start_time' => $request->start_time,
-                            'end_time' => $request->end_time,
-                            'slot_duration' => 30, // Default to 30 minutes
-                            'buffer_time' => 0,    // Default to no buffer
-                            'max_patients_per_slot' => 1, // Default to 1 patient per slot
-                            'is_active' => true,
-                            'allow_online_booking' => true,
-                            'advance_booking_days' => 30,
-                            'min_booking_hours' => 24,
-                            'effective_from' => now()->toDateString(),
-                        ]);
-                    }
+                    $this->createDoctorWithCabinet($user, $request, $geocodeData);
                 }
 
                 // Send verification email
-                try {
-                    Log::info('Sending verification code: ' . $verificationCode . ' to email: ' . $user->email);
-
-                    $mail = new VerificationCode($verificationCode);
-                    Mail::to($user->email)->send($mail);
-
-                    Log::info('Verification email sent successfully');
-                } catch (\Exception $e) {
-                    Log::error('Failed to send verification email: ' . $e->getMessage());
-                    throw new \Exception('Failed to send verification email: ' . $e->getMessage());
-                }
+                $this->sendVerificationEmail($user, $verificationCode);
 
                 return response()->json([
                     'message' => 'Utilisateur enregistré avec succès. Veuillez vérifier votre email pour le code de vérification.',
@@ -242,6 +88,311 @@ class AuthController extends Controller
                 'message' => 'Échec de l\'enregistrement',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Comprehensive validation of all registration data
+     */
+    private function validateRegistrationData(Request $request)
+    {
+        $rules = [
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:8|confirmed',
+            'role' => 'required|in:admin,doctor,patient',
+        ];
+
+        // Role-specific validation rules
+        if ($request->role === 'doctor' || $request->role === 'patient') {
+            $rules['name'] = 'required|string|min:2|max:255';
+        }
+
+        // Doctor-specific validation
+        if ($request->role === 'doctor') {
+            $rules = array_merge($rules, [
+                'speciality_id' => 'required|exists:specialities,id',
+                'license_number' => 'required|string|unique:doctors,license_number|min:5|max:50',
+                'bio' => 'nullable|string|max:1000',
+                'consultation_fees' => 'required|numeric|min:0|max:999999.99',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i|after:start_time',
+                'available_days' => 'required|array|min:1|max:7',
+                'available_days.*' => 'required|string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
+                'cabinet_option' => 'required|in:new,existing',
+            ]);
+
+            // Cabinet-specific validation based on option
+            if ($request->cabinet_option === 'existing') {
+                $rules['cabinet_id'] = 'required|exists:cabinets,id';
+            } else {
+                $rules = array_merge($rules, [
+                    'cabinet_name' => 'required|string|min:2|max:255',
+                    'cabinet_description' => 'nullable|string|max:1000',
+                    'cabinet_address' => 'required|string|min:10|max:500',
+                    'cabinet_city' => 'required|string|min:2|max:100',
+                    'cabinet_postal_code' => 'required|string|min:4|max:10',
+                    'cabinet_email' => 'nullable|email|max:255',
+                    'cabinet_opening_time' => 'required|date_format:H:i',
+                    'cabinet_closing_time' => 'required|date_format:H:i|after:cabinet_opening_time',
+                    'cabinet_working_days' => 'required|array|min:1|max:7',
+                    'cabinet_working_days.*' => 'required|string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
+                ]);
+            }
+        }
+
+        // Patient-specific validation
+        if ($request->role === 'patient') {
+            $rules = array_merge($rules, [
+                'date_of_birth' => 'required|date|before:today|after:1900-01-01',
+                'gender' => 'required|in:Female,Male',
+                'address' => 'required|string|min:10|max:500',
+                'city' => 'required|string|min:2|max:100',
+                'code_postal' => 'required|string|min:4|max:10',
+                'medical_history' => 'nullable|string|max:2000',
+                'allergies' => 'nullable|string|max:1000',
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
+    }
+
+    /**
+     * Additional business logic validations
+     */
+    private function validateBusinessRules(Request $request)
+    {
+        if ($request->role === 'doctor') {
+            // Validate time constraints
+            if ($request->start_time >= $request->end_time) {
+                throw ValidationException::withMessages([
+                    'end_time' => 'L\'heure de fin de consultation doit être après l\'heure de début'
+                ]);
+            }
+
+            // Validate cabinet times for new cabinets
+            if ($request->cabinet_option === 'new' &&
+                $request->cabinet_opening_time >= $request->cabinet_closing_time) {
+                throw ValidationException::withMessages([
+                    'cabinet_closing_time' => 'L\'heure de fermeture du cabinet doit être après l\'heure d\'ouverture'
+                ]);
+            }
+
+            // Validate that doctor's hours are within cabinet hours for new cabinets
+            if ($request->cabinet_option === 'new') {
+                if ($request->start_time < $request->cabinet_opening_time ||
+                    $request->end_time > $request->cabinet_closing_time) {
+                    throw ValidationException::withMessages([
+                        'start_time' => 'Les heures de consultation du médecin doivent être dans les heures d\'ouverture du cabinet'
+                    ]);
+                }
+            }
+
+            // Validate available days are unique
+            if (count($request->available_days) !== count(array_unique($request->available_days))) {
+                throw ValidationException::withMessages([
+                    'available_days' => 'Les jours disponibles ne peuvent pas être dupliqués'
+                ]);
+            }
+
+            // For existing cabinet, validate speciality compatibility
+            if ($request->cabinet_option === 'existing') {
+                $this->validateCabinetSpecialityCompatibility($request->cabinet_id, $request->speciality_id);
+            }
+        }
+
+        if ($request->role === 'patient') {
+            // Validate age is reasonable (not too young, not too old)
+            $age = \Carbon\Carbon::parse($request->date_of_birth)->age;
+            if ($age < 0 || $age > 150) {
+                throw ValidationException::withMessages([
+                    'date_of_birth' => 'Date de naissance invalide'
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Pre-validate geocoding for new cabinets
+     */
+    private function preValidateGeocoding(Request $request)
+    {
+        $geocodeData = null;
+
+        if ($request->role === 'doctor' && $request->cabinet_option === 'new') {
+            try {
+                $geocodeResults = $this->nominatimService->geocode(
+                    $request->cabinet_address,
+                    $request->cabinet_city,
+                    $request->cabinet_postal_code
+                );
+
+                if (empty($geocodeResults)) {
+                    throw ValidationException::withMessages([
+                        'cabinet_address' => 'Impossible de géocoder l\'adresse du cabinet. Veuillez vérifier l\'adresse et inclure des détails comme le numéro de rue ou un point de repère.'
+                    ]);
+                }
+
+                $geocodeData = $geocodeResults[0];
+
+                // Validate geocoding quality
+                if (!isset($geocodeData['lat']) || !isset($geocodeData['lon'])) {
+                    throw ValidationException::withMessages([
+                        'cabinet_address' => 'Les coordonnées de l\'adresse n\'ont pas pu être déterminées avec précision.'
+                    ]);
+                }
+
+            } catch (\Exception $e) {
+                Log::warning('Geocoding failed for address: ' . $request->cabinet_address . ' - ' . $e->getMessage());
+                throw ValidationException::withMessages([
+                    'cabinet_address' => 'Erreur lors de la validation de l\'adresse du cabinet.'
+                ]);
+            }
+        }
+
+        return $geocodeData;
+    }
+
+    /**
+     * Validate cabinet-speciality compatibility for existing cabinets
+     */
+    private function validateCabinetSpecialityCompatibility($cabinetId, $specialityId)
+    {
+        $cabinet = Cabinet::find($cabinetId);
+        if (!$cabinet || !$cabinet->is_active) {
+            throw ValidationException::withMessages([
+                'cabinet_id' => 'Le cabinet sélectionné n\'est pas actif ou n\'existe pas.'
+            ]);
+        }
+
+        // Check if cabinet already has this speciality or if it can accept new specialities
+        $existingSpecialities = CabinetSpeciality::where('cabinet_id', $cabinetId)->count();
+        if ($existingSpecialities >= 10) { // Assuming max 10 specialities per cabinet
+            throw ValidationException::withMessages([
+                'speciality_id' => 'Ce cabinet a atteint le nombre maximum de spécialités.'
+            ]);
+        }
+    }
+
+    /**
+     * Create patient profile
+     */
+    private function createPatient($user, $request)
+    {
+        return Patient::create([
+            'user_id' => $user->id,
+            'name' => $request->name,
+            'date_of_birth' => $request->date_of_birth,
+            'gender' => $request->gender,
+            'address' => $request->address,
+            'city' => $request->city,
+            'code_postal' => $request->code_postal,
+            'medical_history' => $request->medical_history,
+            'allergies' => $request->allergies,
+        ]);
+    }
+
+    /**
+     * Create doctor with cabinet
+     */
+    private function createDoctorWithCabinet($user, $request, $geocodeData)
+    {
+        $cabinetId = null;
+
+        // Handle cabinet creation or assignment
+        if ($request->cabinet_option === 'new') {
+            $cabinet = Cabinet::create([
+                'owner_id' => $user->id,
+                'name' => $request->cabinet_name,
+                'description' => $request->cabinet_description,
+                'image' => "https://i.pinimg.com/1200x/c6/3e/4b/c63e4baabab225b16b85b9e7bcc05069.jpg",
+                'address' => $request->cabinet_address,
+                'city' => $request->cabinet_city,
+                'postal_code' => $request->cabinet_postal_code,
+                'email' => $request->cabinet_email,
+                'opening_time' => $request->cabinet_opening_time,
+                'closing_time' => $request->cabinet_closing_time,
+                'working_days' => $request->cabinet_working_days,
+                'latitude' => $geocodeData['lat'] ?? null,
+                'longitude' => $geocodeData['lon'] ?? null,
+                'is_active' => true,
+            ]);
+
+            $cabinetId = $cabinet->id;
+
+            // Associate speciality with new cabinet
+            CabinetSpeciality::create([
+                'cabinet_id' => $cabinet->id,
+                'speciality_id' => $request->speciality_id,
+            ]);
+        } else {
+            $cabinetId = $request->cabinet_id;
+
+            // Add speciality to existing cabinet if not present
+            $cabinetSpeciality = CabinetSpeciality::where('cabinet_id', $cabinetId)
+                ->where('speciality_id', $request->speciality_id)
+                ->first();
+
+            if (!$cabinetSpeciality) {
+                CabinetSpeciality::create([
+                    'cabinet_id' => $cabinetId,
+                    'speciality_id' => $request->speciality_id,
+                ]);
+            }
+        }
+
+        // Create doctor profile
+        $doctor = Doctor::create([
+            'user_id' => $user->id,
+            'speciality_id' => $request->speciality_id,
+            'cabinet_id' => $cabinetId,
+            'name' => $request->name,
+            'license_number' => $request->license_number,
+            'bio' => $request->bio,
+            'consultation_fees' => $request->consultation_fees,
+            'start_time' => $request->start_time,
+            'end_time' => $request->end_time,
+            'available_days' => $request->available_days,
+            'is_active' => true,
+        ]);
+
+        // Create schedules for the doctor
+        foreach ($request->available_days as $day) {
+            Schedule::create([
+                'doctor_id' => $doctor->id,
+                'cabinet_id' => $cabinetId,
+                'day_of_week' => $this->translateDay($day),
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'slot_duration' => 30,
+                'buffer_time' => 0,
+                'max_patients_per_slot' => 1,
+                'is_active' => true,
+                'allow_online_booking' => true,
+                'advance_booking_days' => 30,
+                'min_booking_hours' => 24,
+                'effective_from' => now()->toDateString(),
+            ]);
+        }
+
+        return $doctor;
+    }
+
+    /**
+     * Send verification email
+     */
+    private function sendVerificationEmail($user, $verificationCode)
+    {
+        try {
+            Log::info('Sending verification code: ' . $verificationCode . ' to email: ' . $user->email);
+            Mail::to($user->email)->send(new VerificationCode($verificationCode));
+            Log::info('Verification email sent successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to send verification email: ' . $e->getMessage());
+            throw new \Exception('Failed to send verification email: ' . $e->getMessage());
         }
     }
 
@@ -407,14 +558,7 @@ class AuthController extends Controller
             ]);
 
             // Send verification email
-            try {
-                Log::info('Resending verification code: ' . $verificationCode . ' to email: ' . $user->email);
-                Mail::to($user->email)->send(new VerificationCode($verificationCode));
-                Log::info('Verification email resent successfully');
-            } catch (\Exception $e) {
-                Log::error('Failed to resend verification email: ' . $e->getMessage());
-                throw new \Exception('Failed to resend verification email: ' . $e->getMessage());
-            }
+            $this->sendVerificationEmail($user, $verificationCode);
 
             return response()->json([
                 'message' => 'Verification code resent successfully',
