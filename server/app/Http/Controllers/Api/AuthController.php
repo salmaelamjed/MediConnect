@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Patient;
 use App\Models\Doctor;
+use App\Models\Schedule;
 use App\Services\NominatimService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -183,7 +184,7 @@ class AuthController extends Controller
                     }
 
                     // Create doctor profile
-                    Doctor::create([
+                    $doctor = Doctor::create([
                         'user_id' => $user->id,
                         'speciality_id' => $request->speciality_id,
                         'cabinet_id' => $cabinetId,
@@ -196,6 +197,25 @@ class AuthController extends Controller
                         'available_days' => $request->available_days,
                         'is_active' => true,
                     ]);
+
+                    // Create schedules for the doctor
+                    foreach ($request->available_days as $day) {
+                        Schedule::create([
+                            'doctor_id' => $doctor->id,
+                            'cabinet_id' => $cabinetId,
+                            'day_of_week' => $this->translateDay($day), // Convert French to English (e.g., 'lundi' to 'monday')
+                            'start_time' => $request->start_time,
+                            'end_time' => $request->end_time,
+                            'slot_duration' => 30, // Default to 30 minutes
+                            'buffer_time' => 0,    // Default to no buffer
+                            'max_patients_per_slot' => 1, // Default to 1 patient per slot
+                            'is_active' => true,
+                            'allow_online_booking' => true,
+                            'advance_booking_days' => 30,
+                            'min_booking_hours' => 24,
+                            'effective_from' => now()->toDateString(),
+                        ]);
+                    }
                 }
 
                 // Send verification email
@@ -223,6 +243,23 @@ class AuthController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Translate French day to English for schedule compatibility
+     */
+    private function translateDay($frenchDay)
+    {
+        $daysMap = [
+            'lundi' => 'monday',
+            'mardi' => 'tuesday',
+            'mercredi' => 'wednesday',
+            'jeudi' => 'thursday',
+            'vendredi' => 'friday',
+            'samedi' => 'saturday',
+            'dimanche' => 'sunday',
+        ];
+        return $daysMap[$frenchDay] ?? $frenchDay;
     }
 
     /**

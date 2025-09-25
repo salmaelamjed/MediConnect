@@ -20,4 +20,11 @@ class Patient extends Model
         'medical_history',
         'allergies',
     ];
+    /**
+     * Relation avec l'utilisateur associé (1:1)
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

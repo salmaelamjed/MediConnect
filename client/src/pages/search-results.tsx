@@ -323,7 +323,7 @@ function ExpandedCabinetDetails({
                   mode="single"
                   selected={selectedDate || undefined}
                   onSelect={(date) => date && onDateSelect(date)}
-                  className="border rounded-md shadow-sm"
+                  className="border rounded-md shadow-sm "
                   disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 />
               </div>
@@ -861,7 +861,7 @@ export default function SearchResults() {
               })
             )}
           </div>
-          <div className="h-96 lg:h-[calc(100vh-200px)] sticky top-20">
+          <div className="h-screen lg:h-[calc(100vh-200px)] sticky top-20">
             {loading === "pending" ? (
               <div className="flex items-center justify-center h-full border border-gray-200 rounded-lg bg-gray-50">
                 <div className="text-center text-gray-500">
