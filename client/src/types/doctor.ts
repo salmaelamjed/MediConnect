@@ -1,7 +1,7 @@
 export interface Doctor {
   id: number;
   user_id?: number;
-  cabinet_id?: number;
+  cabinet_id?: number
   name: string;
   license_number: string;
   bio: string;

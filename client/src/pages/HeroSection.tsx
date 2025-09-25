@@ -1,5 +1,5 @@
 "use client";
-import { Search } from "lucide-react";
+import { LoaderCircleIcon, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -79,7 +79,7 @@ export default function HeroSection() {
       <section
         className="relative min-h-[700px] overflow-hidden bg-center bg-cover rounded-md sm:py-12 md:py-16 lg:py-20"
         style={{
-          backgroundImage: `url(https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg)`, // Fixed syntax error
+          backgroundImage: `url(https://i.pinimg.com/1200x/b5/1f/bd/b51fbd69a0123bae39b94cf7f12a4f2e.jpg)`,
           backgroundPosition: "right",
         }}
       >
@@ -118,59 +118,54 @@ export default function HeroSection() {
                   size="lg"
                   className="h-12 px-8 font-semibold text-white text-md bg-secondary hover:bg-secondary/90"
                   onClick={handleSearch}
-                 
                 >
                   Search
                 </Button>
               </div>
 
               {/* Suggestions Dropdown */}
-            {searchTerm.length >= 2 && loading === "pending" ? (
-                  <div className="absolute left-0 z-20 w-full p-3 mt-1 text-gray-500 border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm">
-                    Loading suggestions...
-                  </div>
-                ) : searchTerm.length >= 2 && loading === "succeeded" && suggestions.length > 0 ? (
-                  <div
-                    className="absolute left-0 z-20 w-full mt-1 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm"
-                    style={{ maxHeight: "240px" }}
-                  >
-                    {suggestions.map((suggestion) => (
-                      <div
-                        key={suggestion.id}
-                        className="flex items-start gap-3 p-3 text-lg transition-colors cursor-pointer hover:bg-gray-100 text-foreground"
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        onKeyPress={(e) => e.key === "Enter" && handleSuggestionClick(suggestion)}
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`Select ${suggestion.name}`}
-                      >
-                        <img
-                          src={suggestion.image}
-                          alt={`${suggestion.name} image`}
-                          className="object-cover w-12 h-12 rounded-md"
-                          onError={(e) => {
-                            e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(suggestion.name)}`;
-                          }}
-                        />
-                        <div className="flex flex-col flex-1 min-w-0">
-                          <span className="font-medium truncate text-foreground">{suggestion.name}</span>
-                          <span className="text-sm truncate text-emerald-500">
-                            {suggestion.address}, {suggestion.city}
-                          </span>
-                          {suggestion.specialities && suggestion.specialities.length > 0 && (
-                            <span className="text-xs text-gray-500 truncate">
-                              {suggestion.specialities.map((s) => s.name).join(", ")}
-                            </span>
-                          )}
-                        </div>
+              {searchTerm.length >= 2 && loading === "pending" ? (
+                <div className="absolute left-0 z-20 w-full p-3 mt-1 border border-gray-200 rounded-md shadow-lg text-primary bg-white/95 backdrop-blur-sm">
+                  <LoaderCircleIcon className="inline w-4 h-5 mr-2 text-pring-primary"/>
+                  Loading suggestions...
+                </div>
+              ) : searchTerm.length >= 2 && loading === "succeeded" && suggestions.length > 0 ? (
+                <div
+                  className="absolute left-0 z-20 w-full mt-1 overflow-y-auto border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm"
+                  style={{ maxHeight: "240px" }}
+                >
+                  {suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="flex items-center gap-3 p-3 text-lg transition-colors cursor-pointer hover:bg-gray-100 text-foreground"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      onKeyPress={(e) => e.key === "Enter" && handleSuggestionClick(suggestion)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Select ${suggestion.name}`}
+                    >
+                      <img
+                        src={suggestion.image}
+                        alt={`${suggestion.name} image`}
+                        className="object-cover rounded-md h-14 w-14"
+                        onError={(e) => {
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(suggestion.name)}`;
+                        }}
+                      />
+                      <div className="flex flex-col ml-2">
+                        <span className="font-medium text-foreground">{suggestion.name}</span>
+                        <span className="text-sm text-emerald-500">
+                          {suggestion.address}, {suggestion.city}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                ) : searchTerm.length >= 2 && loading === "succeeded" ? (
-                  <div className="absolute left-0 z-20 w-full p-3 mt-1 text-gray-500 border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm">
-                    No suggestions found
-                  </div>
-                ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : searchTerm.length >= 2 && loading === "succeeded" ? (
+                <div className="absolute left-0 z-20 w-full p-3 mt-1 text-gray-500 border border-gray-200 rounded-md shadow-lg bg-white/95 backdrop-blur-sm">
+                  No suggestions found
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
