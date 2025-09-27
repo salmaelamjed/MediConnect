@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Mail } from "lucide-react"
 import { useAppSelector, useAppDispatch } from "@/store/hooks"
@@ -9,13 +9,29 @@ import { toast } from "sonner"
 import { useNavigate } from "react-router-dom"
 import { actEmailVerification, actResendVerificationCode } from "@/store/auth/act/actEmailVerification"
 
+interface VerificationData {
+  email: string;
+  code: string;
+}
+
+interface ResendData {
+  email: string;
+}
+
+
+
 export default function EmailVerificationModal() {
-  const [code, setCode] = useState(["", "", "", "", "", ""])
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [code, setCode] = useState<string[]>(["", "", "", "", "", ""])
+  const [activeIndex, setActiveIndex] = useState<number>(0)
   const { user } = useAppSelector((state) => state.auth)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Correction du ref avec useCallback
+  const setInputRef = useCallback((index: number) => (el: HTMLInputElement | null) => {
+    inputRefs.current[index] = el
+  }, [])
 
   const handleInputChange = (index: number, value: string) => {
     if (value.length <= 1 && /^[0-9]*$/.test(value)) {
@@ -51,13 +67,13 @@ export default function EmailVerificationModal() {
     }
   }
 
-  const handleVerify = async () => {
+  const handleVerify = async (): Promise<void> => {
     if (!user?.email) {
       toast.error("No email found. Please try again.")
       return
     }
 
-    const verificationData = {
+    const verificationData: VerificationData = {
       email: user.email,
       code: code.join(""),
     }
@@ -67,27 +83,33 @@ export default function EmailVerificationModal() {
       toast.success(response.message)
       navigate("/login")
     } catch (error: unknown) {
-      toast.error(error.message || "Verification failed")
+      // Correction du type any vers unknown
+      const errorMessage = error instanceof Error ? error.message : "Verification failed"
+      toast.error(errorMessage)
     }
   }
 
-  const handleResend = async () => {
+  const handleResend = async (): Promise<void> => {
     if (!user?.email) {
       toast.error("No email found. Please try again.")
       return
     }
 
-    const resendData = {
+    const resendData: ResendData = {
       email: user.email,
     }
 
     try {
       const response = await dispatch(actResendVerificationCode(resendData)).unwrap()
       toast.success(response.message)
-    } catch (error: any) {
-      toast.error(error.message || "Failed to resend code")
+    } catch (error: unknown) {
+      // Correction du type any vers unknown
+      const errorMessage = error instanceof Error ? error.message : "Failed to resend code"
+      toast.error(errorMessage)
     }
   }
+
+  const isVerifyDisabled = code.some((digit) => !digit)
 
   return (
     <div className="flex items-center justify-center min-h-[90vh] ">
@@ -118,9 +140,9 @@ export default function EmailVerificationModal() {
               value={digit}
               onChange={(e) => handleInputChange(index, e.target.value)}
               onKeyDown={(e) => handleKeyDown(index, e)}
-              onPaste={(e) => handlePaste(e)}
+              onPaste={handlePaste}
               onFocus={() => setActiveIndex(index)}
-              ref={(el) => (inputRefs.current[index] = el)}
+              ref={setInputRef(index)}
               className={`w-12 h-12 text-center text-xl font-semibold border-2 rounded-lg focus:outline-none transition-colors ${
                 activeIndex === index
                   ? "border-primary bg-purple-50"
@@ -139,6 +161,7 @@ export default function EmailVerificationModal() {
           <button
             onClick={handleResend}
             className="font-medium text-blue-600 hover:text-primary"
+            type="button"
           >
             Send a new code
           </button>
@@ -148,7 +171,8 @@ export default function EmailVerificationModal() {
         <Button
           onClick={handleVerify}
           className="w-full py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          disabled={code.some((digit) => !digit)}
+          disabled={isVerifyDisabled}
+          type="button"
         >
           Verify email
         </Button>

@@ -1,3 +1,4 @@
+import ReservationsPage from "@/pages/dashboard/commun/reservations-page";
 import SearchResults from "@/pages/search-results";
 import { StethoscopeIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
@@ -115,6 +116,7 @@ const router = createBrowserRouter([
           { index: true, element: <DoctorOverView /> },
           { path: "patients", element:<PatientsManagement/> },
           { path: "planning", element: <PlanningPage /> },
+          {path:"reservations",element:<ReservationsPage/>},
           { path: "consultations", element: <ConsultationsPage /> },
           { path: "waiting_room", element: <WaitingRoom/> },
           { path: "staff_list", element: <StaffList /> },
@@ -152,6 +154,7 @@ const router = createBrowserRouter([
           { index: true, element: <AdminOverview /> },
           { path: "patients", element:<AdminPatientsManagement/> },
           { path: "doctors", element: <DoctorsManagement /> },
+          {path:"reservations",element:<ReservationsPage/>},
           { path: "appointments", element: <AppointmentsManagement /> },
           { path: "specialties", element: <SpecialtiesManagement/> },
           { path: "reports", element: <AdminReports/> },
@@ -186,6 +189,7 @@ const router = createBrowserRouter([
           { index: true, element: <OwnerOverView /> },
           { path: "patients", element:<OwnerPatientsManagement/> },
           { path: "planning", element: <OwnerPlanning /> },
+          {path:"reservations",element:<ReservationsPage/>},
           { path: "staff_list", element: <OwnerStaffList /> },
           { path: "specialties", element: <OwnerSpecialitiesMagement/> },
           { path: "reports", element: <OwnerReports/> },

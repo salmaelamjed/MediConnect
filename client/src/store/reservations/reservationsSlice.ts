@@ -1,11 +1,18 @@
+// src/store/reservations/reservationsSlice.ts
 import { createSlice } from "@reduxjs/toolkit";
 import { isString } from "@/types/guard";
 import type { Reservation } from "@/types/reservation";
 import type { TLoading } from "@/types/shared";
 import { actCreateReservation } from "./act/actCreateReservation";
-import {
-  actGetAvailableSlots,
-} from "./act/actGetAvailableSlots";
+import { actGetAvailableSlots } from "./act/actGetAvailableSlots";
+import { actGetReservations } from "./act/actGetReservations";
+import { actDeleteReservation } from "./act/actDeleteReservation";
+import { actUpdateReservation } from "./act/actUpdateReservation"; // Ajoutez cet import
+import type { PaginationInfo } from "@/types/pagination";
+import { actConfirmReservation } from "./act/actConfirmReservation";
+import { actCancelReservation } from "./act/actCancelReservation";
+import { actCompleteReservation } from "./act/actCompleteReservation";
+import { actGetStatsReservations } from "./act/actGetStatsReservations";
 
 interface IReservationsState {
   reservations: Reservation[];
@@ -15,6 +22,7 @@ interface IReservationsState {
   availableSlots: string[];
   slotsLoading: TLoading;
   slotsError: string | null;
+  pagination: PaginationInfo | null;
 }
 
 const initialState: IReservationsState = {
@@ -25,6 +33,7 @@ const initialState: IReservationsState = {
   availableSlots: [],
   slotsLoading: "idle",
   slotsError: null,
+  pagination: null,
 };
 
 const reservationsSlice = createSlice({
@@ -36,6 +45,7 @@ const reservationsSlice = createSlice({
       state.selectedReservation = null;
       state.availableSlots = [];
       state.slotsError = null;
+      state.pagination = null;
     },
   },
   extraReducers: (builder) => {
@@ -70,10 +80,147 @@ const reservationsSlice = createSlice({
         state.slotsError = isString(action.payload)
           ? action.payload
           : "Unknown error";
+      })
+      // Get reservations
+      .addCase(actGetReservations.pending, (state) => {
+        state.loading = "pending";
+        state.error = null;
+      })
+      .addCase(actGetReservations.fulfilled, (state, action) => {
+        state.loading = "succeeded";
+        const apiData = action.payload.data;
+        if (apiData) {
+          state.reservations = apiData.data || [];
+          state.pagination = {
+            current_page: apiData.current_page,
+            last_page: apiData.last_page,
+            per_page: apiData.per_page,
+            total: apiData.total,
+            from: apiData.from,
+            to: apiData.to,
+          };
+        } else {
+          state.reservations = action.payload.data || action.payload || [];
+          state.pagination = null;
+        }
+      })
+      .addCase(actGetReservations.rejected, (state, action) => {
+        state.loading = "failed";
+        state.error = isString(action.payload)
+          ? action.payload
+          : "Unknown error";
+      })
+      // Delete reservation
+      .addCase(actDeleteReservation.pending, (state) => {
+        state.loading = "pending";
+        state.error = null;
+      })
+      .addCase(actDeleteReservation.fulfilled, (state, action) => {
+        state.loading = "succeeded";
+        state.reservations = state.reservations.filter(
+          (reservation) => reservation.id !== action.payload.id // TypeScript sait que action.payload.id est un number
+        );
+      })
+      .addCase(actDeleteReservation.rejected, (state, action) => {
+        state.loading = "failed";
+        state.error = isString(action.payload)
+          ? action.payload
+          : "Unknown error";
+      })
+      // Update reservation
+      .addCase(actUpdateReservation.pending, (state) => {
+        state.loading = "pending";
+        state.error = null;
+      })
+      .addCase(actUpdateReservation.fulfilled, (state, action) => {
+        state.loading = "succeeded";
+        state.reservations = state.reservations.map((reservation) =>
+          reservation.id === action.payload.id
+            ? { ...reservation, ...action.payload.data } // Adjust based on API response
+            : reservation
+        );
+      })
+      .addCase(actUpdateReservation.rejected, (state, action) => {
+        state.loading = "failed";
+        state.error = isString(action.payload)
+          ? action.payload
+          : "Unknown error";
+      })
+      // Confirm Reservation
+      .addCase(actConfirmReservation.pending, (state) => {
+        state.loading = "pending";
+        state.error = null;
+      })
+      .addCase(actConfirmReservation.fulfilled, (state, action) => {
+        state.loading = "succeeded";
+        state.reservations = state.reservations.map((reservation) =>
+          reservation.id === action.payload.id
+            ? { ...reservation, ...action.payload }
+            : reservation
+        );
+      })
+      .addCase(actConfirmReservation.rejected, (state, action) => {
+        state.loading = "failed";
+        state.error = isString(action.payload)
+          ? action.payload
+          : "Unknown error";
+      })
+      // Cancel Reservation
+      .addCase(actCancelReservation.pending, (state) => {
+        state.loading = "pending";
+        state.error = null;
+      })
+      .addCase(actCancelReservation.fulfilled, (state, action) => {
+        state.loading = "succeeded";
+        state.reservations = state.reservations.map((reservation) =>
+          reservation.id === action.payload.id
+            ? {
+                ...reservation,
+                status: "cancelled",
+                cancellation_reason: action.payload.cancellation_reason,
+              }
+            : reservation
+        );
+      })
+      .addCase(actCancelReservation.rejected, (state, action) => {
+        state.loading = "failed";
+        state.error = isString(action.payload)
+          ? action.payload
+          : "Unknown error";
+      })
+      //Complete Reservation
+      .addCase(actCompleteReservation.pending, (state) => {
+        state.loading = "pending";
+        state.error = null;
+      })
+      .addCase(actCompleteReservation.fulfilled, (state, action) => {
+        state.loading = "succeeded";
+        state.reservations = action.payload;
+      })
+      .addCase(actCompleteReservation.rejected, (state, action) => {
+        state.loading = "failed";
+        state.error = isString(action.payload)
+          ? action.payload
+          : "Unknown error";
+      })
+      // Get stats of reservations
+      .addCase(actGetStatsReservations.pending, (state) => {
+        state.loading = "pending";
+        state.error = null;
+      })
+      .addCase(actGetStatsReservations.fulfilled, (state, action) => {
+        state.loading = "succeeded";
+        state.reservations = action.payload;
+      })
+      .addCase(actGetStatsReservations.rejected, (state, action) => {
+        state.loading = "failed";
+        state.error = isString(action.payload)
+          ? action.payload
+          : "Unknown error";
       });
   },
 });
 
-export { actCreateReservation, actGetAvailableSlots };
+export { actCreateReservation, actGetAvailableSlots, actDeleteReservation, actUpdateReservation };
 export const { reservationsRecordsCleanUp } = reservationsSlice.actions;
 export default reservationsSlice.reducer;

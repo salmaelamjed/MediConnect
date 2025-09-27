@@ -1027,4 +1027,138 @@ public function getAvailableSlots(Request $request, $doctorId)
             ]);
         }
     }
+
+    /**
+ * Delete a reservation (Patient, Doctor, or Admin only).
+ */
+public function destroy($id)
+{
+    $user = Auth::user();
+
+    try {
+        DB::beginTransaction();
+
+        $reservation = Reservation::with(['patient.user', 'doctor.user'])->findOrFail($id);
+
+        $canDelete = false;
+        $deletedBy = '';
+
+        // Check authorization
+        if ($user->role === 'patient') {
+            $patient = Patient::where('user_id', $user->id)->firstOrFail();
+            $canDelete = $reservation->patient_id === $patient->id;
+            $deletedBy = 'patient';
+        } elseif ($user->role === 'doctor') {
+            $doctor = Doctor::where('user_id', $user->id)->firstOrFail();
+            $canDelete = $reservation->doctor_id === $doctor->id;
+            $deletedBy = 'doctor';
+        } elseif ($user->role === 'admin') {
+            $canDelete = true;
+            $deletedBy = 'admin';
+        }
+
+        if (!$canDelete) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Not authorized to delete this reservation'
+            ], 403);
+        }
+
+        // Prevent deletion of completed reservations
+        if ($reservation->status === 'completed') {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Completed reservations cannot be deleted'
+            ], 400);
+        }
+
+        // Check if reservation is within the cancellable timeframe
+        $reservationDateTime = Carbon::parse($reservation->reservation_date . ' ' . $reservation->reservation_time);
+        $hoursUntilReservation = $reservationDateTime->diffInHours(Carbon::now(), false);
+
+        // Allow deletion up to 2 hours before the reservation (configurable)
+        $minHoursBeforeDeletion = 2;
+        if ($hoursUntilReservation <= $minHoursBeforeDeletion && $reservation->status === 'confirmed') {
+            DB::rollBack();
+            return response()->json([
+                'message' => "Confirmed reservations cannot be deleted less than {$minHoursBeforeDeletion} hours before the scheduled time"
+            ], 400);
+        }
+
+        // Create deletion notification for audit trail
+        $deletionMessage = "Reservation was deleted by {$deletedBy} on " . now()->format('Y-m-d H:i:s');
+
+        if ($deletedBy === 'patient') {
+            $this->createNotification(
+                $reservation->doctor->user_id,
+                'Appointment Deleted',
+                "Patient {$reservation->patient->name} has deleted their appointment scheduled for " .
+                Carbon::parse($reservation->reservation_date)->format('d/m/Y') .
+                " at " . Carbon::parse($reservation->reservation_time)->format('H:i') .
+                ". {$deletionMessage}",
+                'appointment_deletion',
+                $reservation->id
+            );
+        } elseif ($deletedBy === 'doctor') {
+            $this->createNotification(
+                $reservation->patient->user_id,
+                'Appointment Deleted',
+                "Your appointment with Dr. {$reservation->doctor->name} scheduled for " .
+                Carbon::parse($reservation->reservation_date)->format('d/m/Y') .
+                " at " . Carbon::parse($reservation->reservation_time)->format('H:i') .
+                " has been deleted by the doctor. {$deletionMessage}",
+                'appointment_deletion',
+                $reservation->id
+            );
+        }
+        // For admin deletion, notify both patient and doctor
+        elseif ($deletedBy === 'admin') {
+            $this->createNotification(
+                $reservation->patient->user_id,
+                'Appointment Deleted by Admin',
+                "Your appointment with Dr. {$reservation->doctor->name} scheduled for " .
+                Carbon::parse($reservation->reservation_date)->format('d/m/Y') .
+                " at " . Carbon::parse($reservation->reservation_time)->format('H:i') .
+                " has been deleted by an administrator. {$deletionMessage}",
+                'appointment_deletion',
+                $reservation->id
+            );
+
+            $this->createNotification(
+                $reservation->doctor->user_id,
+                'Appointment Deleted by Admin',
+                "Patient {$reservation->patient->name}'s appointment scheduled for " .
+                Carbon::parse($reservation->reservation_date)->format('d/m/Y') .
+                " at " . Carbon::parse($reservation->reservation_time)->format('H:i') .
+                " has been deleted by an administrator. {$deletionMessage}",
+                'appointment_deletion',
+                $reservation->id
+            );
+        }
+
+        // Soft delete the reservation
+        $reservation->delete();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reservation deleted successfully'
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Reservation not found'
+        ], 404);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Error deleting reservation',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

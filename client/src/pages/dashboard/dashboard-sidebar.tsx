@@ -20,6 +20,7 @@ const getNavItems = (role: "admin" | "doctor" | "owner"): NavItem[] => {
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { title: "Doctors", href: "/admin/doctors", icon: Users },
       { title: "Patients", href: "/admin/patients", icon: Store },
+       { title: "Reservations", href: "/admin/reservations", icon: User },
       { title: "Appointments", href: "/admin/appointments", icon: Package },
       { title: "Specialties", href: "/admin/specialties", icon: CreditCard },
       { title: "Reports", href: "/admin/reports", icon: Package },
@@ -29,8 +30,9 @@ const getNavItems = (role: "admin" | "doctor" | "owner"): NavItem[] => {
 if (role === "owner") {
   return [
     { title: "Dashboard", href: "/owner", icon: LayoutDashboard },
-    { title: "Patients", href: "/owner/patients", icon: User },
     { title: "Planning", href: "/owner/planning", icon: Calendar },
+    { title: "Reservations", href: "/owner/reservations", icon: User },
+    { title: "Patients", href: "/owner/patients", icon: User },
     { title: "Staff List", href: "/owner/staff_list", icon: Users }, 
     { title: "Specialties", href: "/owner/specialties", icon: CreditCard },
     { title: "Reports", href: "/owner/reports", icon: BarChart3 }, 
@@ -39,11 +41,12 @@ if (role === "owner") {
 }
   return [
     { title: "Dashboard", href: "/doctor", icon: LayoutDashboard },
-    { title: "Patients", href: "/doctor/patients", icon: User },
     { title: "Planning", href: "/doctor/planning", icon: Calendar },
+    { title: "Reservations", href: "/doctor/reservations", icon: User },
+    { title: "Patients", href: "/doctor/patients", icon: User },
+    { title: "Reservations", href: "/owner/reservations", icon: User },
     { title: "Consultations", href: "/doctor/consultations", icon: Stethoscope },
     { title: "Waiting Room", href: "/doctor/waiting_room", icon: Clock },
-    { title: "Staff List", href: "/doctor/staff_list", icon: Users },
     { title: "Reports", href: "/doctor/reports", icon: BarChart3 },
     { title: "Settings", href: "/doctor/settings", icon: Settings },
   ];

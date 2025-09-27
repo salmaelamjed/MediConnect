@@ -29,6 +29,14 @@ interface PasswordStrength {
   isValid: boolean
 }
 
+// Interface pour le compteur de tentatives
+interface AttemptCount {
+  email: number;
+  verification: number;
+  password: number;
+  success: number;
+}
+
 const ResetPasswordForm = () => {
   const dispatch = useAppDispatch()
   
@@ -57,7 +65,12 @@ const ResetPasswordForm = () => {
   const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [confirmPasswordError, setConfirmPasswordError] = useState("")
   const [codeError, setCodeError] = useState("")
-  const [attemptCount, setAttemptCount] = useState({ email: 0, verification: 0, password: 0 })
+  const [attemptCount, setAttemptCount] = useState<AttemptCount>({ 
+    email: 0, 
+    verification: 0, 
+    password: 0, 
+    success: 0 
+  })
   const [isLocked, setIsLocked] = useState(false)
   const [lockTimer, setLockTimer] = useState(0)
   
@@ -65,7 +78,7 @@ const ResetPasswordForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const MAX_ATTEMPTS = 3
-  const LOCK_DURATION = 50 //en minutes 
+  const LOCK_DURATION = 3000 // 50 minutes en secondes
 
   const steps = [
     { id: "email", title: "Email", icon: Mail },
@@ -171,12 +184,13 @@ const ResetPasswordForm = () => {
     return true
   }, [])
 
-  // Gestion des tentatives échouées
+  // CORRECTION : Gestion des tentatives échouées
   const handleFailedAttempt = useCallback((step: Step) => {
     setAttemptCount(prev => {
-      const newCount = { ...prev, [step]: prev[step] + 1 }
+      // Correction des lignes problématiques
+      const newCount = { ...prev, [step]: (prev as any)[step] + 1 }
       
-      if (newCount[step] >= MAX_ATTEMPTS) {
+      if ((newCount as any)[step] >= MAX_ATTEMPTS) {
         setIsLocked(true)
         setLockTimer(LOCK_DURATION)
         toast.error(`Trop de tentatives échouées. Verrouillage pendant ${LOCK_DURATION / 60} minutes.`)
@@ -184,7 +198,7 @@ const ResetPasswordForm = () => {
       
       return newCount
     })
-  }, [])
+  }, [MAX_ATTEMPTS, LOCK_DURATION])
 
   const resetAttempts = useCallback((step: Step) => {
     setAttemptCount(prev => ({ ...prev, [step]: 0 }))
@@ -197,7 +211,7 @@ const ResetPasswordForm = () => {
         setLockTimer(prev => {
           if (prev <= 1) {
             setIsLocked(false)
-            setAttemptCount({ email: 0, verification: 0, password: 0 })
+            setAttemptCount({ email: 0, verification: 0, password: 0, success: 0 })
             return 0
           }
           return prev - 1
@@ -268,13 +282,11 @@ const ResetPasswordForm = () => {
       const result = await dispatch(actForgotPasswordSendOtp(email.trim().toLowerCase()))
       
       if (actForgotPasswordSendOtp.fulfilled.match(result)) {
-        // Succès - transition directe vers l'étape suivante
         console.log('OTP sent successfully, moving to verification step')
         resetAttempts("email")
         setCurrentStep("verification")
         toast.success("Code de vérification envoyé avec succès")
       } else if (actForgotPasswordSendOtp.rejected.match(result)) {
-        // Échec - l'erreur sera gérée par le useEffect
         console.log('OTP sending failed:', result.error)
       }
     } catch (error) {
@@ -308,13 +320,11 @@ const ResetPasswordForm = () => {
       }))
       
       if (actForgotPasswordVerifyOtp.fulfilled.match(result)) {
-        // Succès - transition directe vers l'étape suivante
         console.log('OTP verified successfully, moving to password step')
         resetAttempts("verification")
         setCurrentStep("password")
         toast.success("Code vérifié avec succès")
       } else if (actForgotPasswordVerifyOtp.rejected.match(result)) {
-        // Échec - l'erreur sera gérée par le useEffect
         console.log('OTP verification failed:', result.error)
       }
     } catch (error) {
@@ -357,13 +367,11 @@ const ResetPasswordForm = () => {
       }))
       
       if (actForgotPasswordReset.fulfilled.match(result)) {
-        // Succès - transition directe vers l'étape de succès
         console.log('Password reset successfully, moving to success step')
         resetAttempts("password")
         setCurrentStep("success")
         toast.success("Mot de passe réinitialisé avec succès")
       } else if (actForgotPasswordReset.rejected.match(result)) {
-        // Échec - l'erreur sera gérée par le useEffect
         console.log('Password reset failed:', result.error)
       }
     } catch (error) {
@@ -488,7 +496,6 @@ const ResetPasswordForm = () => {
             )}
           </div>
 
-          {/* Indicateur de verrouillage */}
           {isLocked && (
             <div className="flex items-center justify-center p-3 border border-red-200 rounded-lg bg-red-50">
               <AlertCircle className="w-4 h-4 mr-2 text-red-500" />
@@ -498,7 +505,6 @@ const ResetPasswordForm = () => {
             </div>
           )}
 
-          {/* Progress indicator */}
           <div className="flex items-center justify-center space-x-4">
             {steps.map((step, index) => {
               const Icon = step.icon
@@ -529,7 +535,6 @@ const ResetPasswordForm = () => {
             })}
           </div>
 
-          {/* Compteur de tentatives */}
           {attemptCount[currentStep] > 0 && !isLocked && (
             <div className="text-sm text-center text-orange-600">
               Tentative {attemptCount[currentStep]}/{MAX_ATTEMPTS}

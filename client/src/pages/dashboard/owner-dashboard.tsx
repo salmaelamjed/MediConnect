@@ -1,4 +1,5 @@
-"use client"
+"use client";
+
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { DashboardHeader } from "./dashboard-header";
@@ -13,11 +14,15 @@ const OwnerDashboard = () => {
   useEffect(() => {
     const checkScreenSize = () => {
       setIsDesktop(window.innerWidth >= 1024);
+      // Close sidebar on mobile by default
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      }
     };
 
     checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
   const toggleSidebar = () => {
@@ -28,40 +33,39 @@ const OwnerDashboard = () => {
     setIsCollapsed(!isCollapsed);
   };
 
-  // Calculer les classes CSS dynamiquement
+  // Calculer les classes CSS pour la balise <main>
   const getMainClasses = () => {
-    let classes = "flex-1 p-2 lg:py-12 overflow-auto transition-all duration-300 mt-4";
-    
+    let classes = "flex-1 p-2 lg:py-12 overflow-auto transition-all duration-300";
+
     if (isDesktop) {
       if (isCollapsed) {
-        classes += " lg:ml-16"; // Sidebar réduite (64px)
-      } else if (isSidebarOpen) {
-        classes += " lg:ml-60"; // Sidebar ouverte (240px)
+        classes += " lg:ml-20"; // Sidebar réduite (80px)
       } else {
-        classes += " lg:ml-0"; // Sidebar fermée
+        classes += " lg:ml-64"; // Sidebar ouverte (256px)
       }
     } else {
-      classes += " ml-0"; // Mobile: toujours sans marge
+      classes += isSidebarOpen ? " ml-64" : " ml-0"; // Mobile: adjust margin when sidebar is open
     }
-    
+
     return classes;
   };
 
+  // Calculer les classes CSS pour le contenu de l'Outlet
   const getContentClasses = () => {
     let classes = "space-y-6 mx-auto transition-all duration-300 px-4";
-    
+
     if (isDesktop) {
       if (isCollapsed) {
-        classes += " max-w-[calc(100vw-4rem-2rem)]"; // Écran - sidebar réduite - padding
-      } else if (isSidebarOpen) {
-        classes += " max-w-[calc(100vw-15rem-2rem)]"; // Écran - sidebar ouverte - padding
+        classes += " max-w-[calc(100vw-5rem)]"; // Écran - sidebar réduite
       } else {
-        classes += " max-w-[1000px]"; // Largeur normale quand sidebar fermée
+        classes += " max-w-[calc(100vw-16rem)]"; // Écran - sidebar ouverte
       }
     } else {
-      classes += " max-w-full py-12"; // Mobile: pleine largeur
+      classes += isSidebarOpen
+        ? " max-w-[calc(100vw-16rem)]"
+        : " max-w-full"; // Mobile: pleine largeur ou ajustée si sidebar ouverte
     }
-  
+
     return classes;
   };
 
@@ -88,6 +92,6 @@ const OwnerDashboard = () => {
       </div>
     </div>
   );
-}
+};
 
 export default OwnerDashboard;

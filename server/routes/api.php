@@ -110,4 +110,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // GET /api/doctors/{doctorId}/available-slots
     Route::get('/doctors/{doctorId}/available-slots', [ReservationController::class, 'getAvailableSlots'])
         ->name('reservations.available-slots');
+    Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
 });
