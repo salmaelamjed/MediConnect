@@ -1,16 +1,7 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+"use client"
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Pagination,
   PaginationContent,
@@ -19,148 +10,128 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { useEffect, useState } from "react";
-import { actGetReservations } from "@/store/reservations/act/actGetReservations";
-import { actUpdateReservation } from "@/store/reservations/act/actUpdateReservation";
-import { actDeleteReservation } from "@/store/reservations/act/actDeleteReservation";
-import ReservationsSkeleton from "@/components/shared/reservations-skeleton";
-import { Badge } from "@/components/ui/badge";
-import type { Reservation } from "@/types/reservation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { actConfirmReservation } from "@/store/reservations/act/actConfirmReservation";
-import { actCompleteReservation } from "@/store/reservations/act/actCompleteReservation";
-import { actCancelReservation } from "@/store/reservations/act/actCancelReservation";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { isString } from "@/types/guard";
+} from "@/components/ui/pagination"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { useAppDispatch, useAppSelector } from "@/store/hooks"
+import { useEffect, useState } from "react"
+import { actGetReservations } from "@/store/reservations/act/actGetReservations"
+import { actUpdateReservation } from "@/store/reservations/act/actUpdateReservation"
+import { actDeleteReservation } from "@/store/reservations/act/actDeleteReservation"
+import ReservationsSkeleton from "@/components/shared/reservations-skeleton"
+import { Badge } from "@/components/ui/badge"
+import type { Reservation } from "@/types/reservation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { actConfirmReservation } from "@/store/reservations/act/actConfirmReservation"
+import { actCompleteReservation } from "@/store/reservations/act/actCompleteReservation"
+import { actCancelReservation } from "@/store/reservations/act/actCancelReservation"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
+import { isString } from "@/types/guard"
+import { MoreHorizontal, Eye, Edit, Trash2, Clock, CheckCircle, XCircle, UserX, Calendar } from "lucide-react"
 
 const statusConfig = {
   pending: {
-    variant: "secondary" as const,
+    variant: "pending" as const,
     label: "Pending",
-    color: "bg-orange-400 text-white font-bold",
-    description: "pending confirmation ."
+    color: " text-amber-500 border-amber-200",
+    description: "Awaiting confirmation",
+    icon: Clock,
   },
   confirmed: {
-    variant: "default" as const,
+    variant: "confirmed" as const,
     label: "Confirmed",
-    color: "bg-green-500 text-white font-bold",
-    description: "Reservation confirmed."
+    color: " text-emerald-500 border-emerald-200",
+    description: "Reservation confirmed",
+    icon: CheckCircle,
   },
   completed: {
-    variant: "default" as const,
+    variant: "completed" as const,
     label: "Completed",
-    color: "bg-blue-100 text-blue-800",
-    description: "Consultation terminée."
+    color: "text-blue-500 border-blue-500",
+    description: "Consultation completed",
+    icon: Calendar,
   },
   cancelled: {
-    variant: "destructive" as const,
+    variant: "cancel" as const,
     label: "Cancelled",
-    color: "bg-red-500 text-white font-bold",
-    description: "Reservation cancelled ."
+    color: " text-red-500 border-red-500",
+    description: "Reservation cancelled",
+    icon: XCircle,
   },
   no_show: {
-    variant: "outline" as const,
+    variant: "follow_up" as const,
     label: "No Show",
-    color: "bg-violet-400 text-white font-bold",
-    description: "Patient absent."
-  }
-} as const;
+    color: " text-violet-500 border-violet-500",
+    description: "Patient absent",
+    icon: UserX,
+  },
+} as const
 
 const ReservationsPage = () => {
-  const { reservations, loading, error, pagination } = useAppSelector(
-    (state) => state.reservations
-  );
-  const dispatch = useAppDispatch();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
-  const [mode, setMode] = useState<"view" | "edit" | null>(null);
-  const [openSheet, setOpenSheet] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [editedValues, setEditedValues] = useState<Partial<Reservation>>({});
-  
-  // États pour les modals d'actions spéciales
-  const [openCancelModal, setOpenCancelModal] = useState(false);
-  const [openCompleteModal, setOpenCompleteModal] = useState(false);
-  const [cancellationReason, setCancellationReason] = useState("");
-  const [doctorNotes, setDoctorNotes] = useState("");
+  const { reservations, loading, error, pagination } = useAppSelector((state) => state.reservations)
+  const dispatch = useAppDispatch()
+  const [currentPage, setCurrentPage] = useState(1)
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+  const [mode, setMode] = useState<"view" | "edit" | null>(null)
+  const [openSheet, setOpenSheet] = useState(false)
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
+  const [editedValues, setEditedValues] = useState<Partial<Reservation>>({})
+  const [openCancelModal, setOpenCancelModal] = useState(false)
+  const [openCompleteModal, setOpenCompleteModal] = useState(false)
+  const [cancellationReason, setCancellationReason] = useState("")
+  const [doctorNotes, setDoctorNotes] = useState("")
 
   useEffect(() => {
-    dispatch(actGetReservations(currentPage));
-  }, [dispatch, currentPage]);
+    dispatch(actGetReservations(currentPage))
+  }, [dispatch, currentPage])
 
   useEffect(() => {
     if (mode === "edit" && selectedReservation) {
       setEditedValues({
         reason: selectedReservation.reason,
         status: selectedReservation.status,
-      });
+      })
     }
-  }, [mode, selectedReservation]);
+  }, [mode, selectedReservation])
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= (pagination?.last_page || 1)) {
-      setCurrentPage(page);
+      setCurrentPage(page)
     }
-  };
+  }
 
   const getPageNumbers = () => {
-    if (!pagination?.last_page) return [];
+    if (!pagination?.last_page) return []
 
-    const pages = [];
-    const totalPages = pagination.last_page;
-    const current = currentPage;
-    const delta = 2;
+    const pages = []
+    const totalPages = pagination.last_page
+    const current = currentPage
+    const delta = 2
 
     for (let i = 1; i <= totalPages; i++) {
-      if (
-        i === 1 ||
-        i === totalPages ||
-        (i >= current - delta && i <= current + delta)
-      ) {
-        pages.push(i);
+      if (i === 1 || i === totalPages || (i >= current - delta && i <= current + delta)) {
+        pages.push(i)
       } else if (i === current - delta - 1 || i === current + delta + 1) {
-        pages.push("ellipsis");
+        pages.push("ellipsis")
       }
     }
 
-    return pages;
-  };
+    return pages
+  }
 
   const handleDelete = () => {
     if (selectedReservation && selectedReservation.id) {
       dispatch(actDeleteReservation(selectedReservation.id)).then(() => {
-        dispatch(actGetReservations(currentPage));
-        setOpenDeleteDialog(false);
-        setSelectedReservation(null);
-      });
+        dispatch(actGetReservations(currentPage))
+        setOpenDeleteDialog(false)
+        setSelectedReservation(null)
+      })
     }
-  };
+  }
 
   const handleUpdate = () => {
     if (selectedReservation && selectedReservation.id) {
@@ -168,99 +139,105 @@ const ReservationsPage = () => {
         actUpdateReservation({
           id: selectedReservation.id,
           updates: editedValues,
-        })
+        }),
       ).then(() => {
-        dispatch(actGetReservations(currentPage));
-        setOpenSheet(false);
-        setSelectedReservation(null);
-        setMode(null);
-        setEditedValues({});
-      });
+        dispatch(actGetReservations(currentPage))
+        setOpenSheet(false)
+        setSelectedReservation(null)
+        setMode(null)
+        setEditedValues({})
+      })
     }
-  };
+  }
 
   const handleStatusChange = (reservation: Reservation, newStatus: Reservation["status"]) => {
-    // Si le statut nécessite des informations supplémentaires, ouvrir le modal approprié
     if (newStatus === "cancelled") {
-      setSelectedReservation(reservation);
-      setOpenCancelModal(true);
+      setSelectedReservation(reservation)
+      setOpenCancelModal(true)
     } else if (newStatus === "completed") {
-      setSelectedReservation(reservation);
-      setOpenCompleteModal(true);
+      setSelectedReservation(reservation)
+      setOpenCompleteModal(true)
     } else if (newStatus === "confirmed") {
-      // Confirmation simple - pas besoin de modal
-      dispatch(
-        actConfirmReservation(reservation.id)
-      ).then(() => {
-        dispatch(actGetReservations(currentPage));
-      });
-      toast.success('Reservation confirmed successfylly!')
+      dispatch(actConfirmReservation(reservation.id)).then(() => {
+        dispatch(actGetReservations(currentPage))
+      })
+      toast.success("Reservation confirmed successfully!")
     } else {
-      // Autres statuts (pending, no_show)
       dispatch(
         actUpdateReservation({
           id: reservation.id,
           updates: { status: newStatus },
-        })
+        }),
       ).then(() => {
-        dispatch(actGetReservations(currentPage));
-      });
-    }
-  };
-
-const handleCancelReservation = () => {
-  if (selectedReservation && selectedReservation.id) {
-    if (!cancellationReason.trim()) {
-      toast.error("Please provide a cancellation reason.");
-      return;
-    }
-
-    dispatch(
-      actCancelReservation({
-        id: selectedReservation.id,
-        cancellation_reason: cancellationReason.trim(),
+        dispatch(actGetReservations(currentPage))
       })
-    ).then((result) => {
-      if (actCancelReservation.fulfilled.match(result)) {
-        dispatch(actGetReservations(currentPage));
-        setOpenCancelModal(false);
-        setSelectedReservation(null);
-        setCancellationReason("");
-        toast.success(`Reservation cancelled for: ${cancellationReason}`);
-      } else if (actCancelReservation.rejected.match(result)) {
-        const errorMessage = isString(result.payload)
-          ? result.payload
-          :"Failed to cancel reservation";
-        toast.error(errorMessage);
-      }
-    });
+    }
   }
-};
+
+  const handleCancelReservation = () => {
+    if (selectedReservation && selectedReservation.id) {
+      if (!cancellationReason.trim()) {
+        toast.error("Please provide a cancellation reason.")
+        return
+      }
+
+      dispatch(
+        actCancelReservation({
+          id: selectedReservation.id,
+          cancellation_reason: cancellationReason.trim(),
+        }),
+      ).then((result) => {
+        if (actCancelReservation.fulfilled.match(result)) {
+          dispatch(actGetReservations(currentPage))
+          setOpenCancelModal(false)
+          setSelectedReservation(null)
+          setCancellationReason("")
+          toast.success(`Reservation cancelled for: ${cancellationReason}`)
+        } else if (actCancelReservation.rejected.match(result)) {
+          const errorMessage = isString(result.payload)
+            ? result.payload
+            : "Failed to cancel reservation"
+          toast.error(errorMessage)
+        }
+      })
+    }
+  }
 
   const handleCompleteReservation = () => {
     if (selectedReservation && selectedReservation.id) {
+      if (!doctorNotes.trim()) {
+        toast.error("Please provide doctor notes.")
+        return
+      }
+
       dispatch(
         actCompleteReservation({
           id: selectedReservation.id,
-          doctor_notes: doctorNotes,
-        })
-      ).then(() => {
-        dispatch(actGetReservations(currentPage));
-        setOpenCompleteModal(false);
-        setSelectedReservation(null);
-        setDoctorNotes("");
-      });
-      toast.success('Consultation completed ')
+          doctor_notes: doctorNotes.trim(),
+        }),
+      ).then((result) => {
+        if (actCompleteReservation.fulfilled.match(result)) {
+          dispatch(actGetReservations(currentPage))
+          setOpenCompleteModal(false)
+          setSelectedReservation(null)
+          setDoctorNotes("")
+          toast.success("Consultation completed")
+        } else if (actCompleteReservation.rejected.match(result)) {
+          const errorMessage = isString(result.payload)
+            ? result.payload
+            :  "Failed to complete reservation"
+          toast.error(errorMessage)
+        }
+      })
     }
-    
-  };
+  }
 
   const handleInputChange = (field: keyof Reservation, value: string) => {
-    setEditedValues((prev) => ({ ...prev, [field]: value }));
-  };
+    setEditedValues((prev) => ({ ...prev, [field]: value }))
+  }
 
   if (loading === "pending") {
-    return <ReservationsSkeleton />;
+    return <ReservationsSkeleton />
   }
 
   return (
@@ -280,8 +257,8 @@ const handleCancelReservation = () => {
                   <TableHead>ID</TableHead>
                   <TableHead>PATIENT</TableHead>
                   <TableHead>DOCTOR</TableHead>
-                  <TableHead>HOUR </TableHead>
-                  <TableHead>DATE </TableHead>
+                  <TableHead>HOUR</TableHead>
+                  <TableHead>DATE</TableHead>
                   <TableHead>REASON</TableHead>
                   <TableHead>STATUS</TableHead>
                   <TableHead className="text-right">ACTIONS</TableHead>
@@ -289,102 +266,132 @@ const handleCancelReservation = () => {
               </TableHeader>
               <TableBody>
                 {reservations && reservations.length > 0 ? (
-                  reservations.map((reservation: Reservation, index) => (
-                    <TableRow
-                      key={reservation.id}
-                      className={index % 2 === 0 ? "bg-white text-base font-sans" : "bg-muted/20 hover:bg-muted/50"}
-                    >
-                      <TableCell className="font-medium">RES_{reservation.id}</TableCell>
-                      <TableCell>
-                        {reservation.patient?.user?.email || reservation.patient_email}
-                      </TableCell>
-                      <TableCell>{reservation.doctor?.name || "N/A"}</TableCell>
-                      <TableCell>
-                        {reservation.reservation_time}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(reservation.reservation_date).toLocaleDateString("fr-FR")}
-                      </TableCell>
-                      <TableCell>{reservation.reason || "Non spécifiée"}</TableCell>
-                      <TableCell>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Badge
-                              variant={statusConfig[reservation.status]?.variant || "outline"}
-                              className={statusConfig[reservation.status]?.color}
-                            >
-                              {statusConfig[reservation.status]?.label || reservation.status}
-                            </Badge>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-48 cursor-pointer">
-                            <div className="space-y-1">
-                              <ul className="space-y-1 list-none">
+                  reservations.map((reservation: Reservation, index) => {
+                    const StatusIcon = statusConfig[reservation.status].icon
+                    const statusTextColor = statusConfig[reservation.status].color.split(" ")[1] // Extract text color (e.g., text-red-800)
+                    return (
+                      <TableRow
+                        key={reservation.id}
+                        className={index % 2 === 0 ? "bg-white text-base font-sans" : "bg-muted/20 hover:bg-muted/50"}
+                      >
+                        <TableCell className="font-medium">RES_{reservation.id}</TableCell>
+                        <TableCell>{reservation.patient?.user?.email || reservation.patient_email}</TableCell>
+                        <TableCell>{reservation.doctor?.name || "N/A"}</TableCell>
+                        <TableCell>{reservation.reservation_time}</TableCell>
+                        <TableCell>{new Date(reservation.reservation_date).toLocaleDateString("fr-FR")}</TableCell>
+                        <TableCell>{reservation.reason || "Non spécifiée"}</TableCell>
+                        <TableCell>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <div className="relative">
+                                <Badge
+                                  variant={statusConfig[reservation.status].variant}
+                                  className={statusConfig[reservation.status].color}
+                                >
+                                  <StatusIcon className={`w-3 h-3 mr-1.5 text-white ${statusTextColor}`} />
+                                  <span className="text-white">{statusConfig[reservation.status].label}</span>
+                                </Badge>
+                              </div>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-2 border-0 shadow-lg bg-white/95 backdrop-blur-sm">
+                              <div className="space-y-1">
                                 {Object.entries(statusConfig)
                                   .filter(([key]) => key !== reservation.status)
-                                  .map(([key, config]) => (
-                                    <li key={key}>
+                                  .map(([key, config]) => {
+                                    const IconComponent = config.icon
+                                    const iconColor = config.color.split(" ")[1] // Extract text color (e.g., text-red-800)
+                                    return (
                                       <Button
+                                        key={key}
                                         variant="ghost"
-                                        className="justify-start w-full px-2 text-sm cursor-pointer"
+                                        className="w-full justify-start px-3 py-2.5 h-auto text-sm hover:bg-accent/50 transition-colors duration-200"
                                         onClick={() => handleStatusChange(reservation, key as Reservation["status"])}
                                       >
-                                        <span className={`w-3 h-3 rounded-full mr-2 ${config.color.split(" ")[0]}`}></span>
-                                       <span className="cursor-pointer"> {config.label}</span>
+                                        <div className="flex items-center space-x-3">
+                                          <div
+                                            className={`w-2 h-2 rounded-full ${config.color.split(" ")[0]} flex-shrink-0`}
+                                          ></div>
+                                          <IconComponent className={`w-4 h-4 ${iconColor}`} />
+                                          <div className="flex flex-col items-start">
+                                            <span className="font-medium">{config.label}</span>
+                                            <span className="text-xs text-muted-foreground">{config.description}</span>
+                                          </div>
+                                        </div>
                                       </Button>
-                                    </li>
-                                  ))}
-                              </ul>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              ...
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-40">
-                            <div className="grid gap-2">
+                                    )
+                                  })}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Popover>
+                            <PopoverTrigger asChild>
                               <Button
                                 variant="ghost"
-                                className="justify-start px-2"
-                                onClick={() => {
-                                  setSelectedReservation(reservation);
-                                  setMode("view");
-                                  setOpenSheet(true);
-                                }}
+                                size="sm"
+                                className="w-8 h-8 p-0 transition-colors duration-200 hover:bg-accent"
                               >
-                                Show Details
+                                <MoreHorizontal className="w-4 h-4" />
+                                <span className="sr-only">Open menu</span>
                               </Button>
-                              <Button
-                                variant="ghost"
-                                className="justify-start px-2"
-                                onClick={() => {
-                                  setSelectedReservation(reservation);
-                                  setMode("edit");
-                                  setOpenSheet(true);
-                                }}
-                              >
-                                Update
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                className="justify-start px-2 text-destructive"
-                                onClick={() => {
-                                  setSelectedReservation(reservation);
-                                  setOpenDeleteDialog(true);
-                                }}
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-2 border-0 shadow-lg bg-white/95 backdrop-blur-sm">
+                              <div className="space-y-1">
+                                <div className="px-3 py-2 text-xs font-medium border-b text-muted-foreground">
+                                  Actions
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  className="w-full justify-start px-3 py-2.5 h-auto text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+                                  onClick={() => {
+                                    setSelectedReservation(reservation)
+                                    setMode("view")
+                                    setOpenSheet(true)
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4 mr-3" />
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-medium">View Details</span>
+                                    <span className="text-xs text-muted-foreground">See full information</span>
+                                  </div>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  className="w-full justify-start px-3 py-2.5 h-auto text-sm hover:bg-amber-50 hover:text-amber-700 transition-colors duration-200"
+                                  onClick={() => {
+                                    setSelectedReservation(reservation)
+                                    setMode("edit")
+                                    setOpenSheet(true)
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4 mr-3" />
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-medium">Edit</span>
+                                    <span className="text-xs text-muted-foreground">Modify reservation</span>
+                                  </div>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  className="w-full justify-start px-3 py-2.5 h-auto text-sm hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+                                  onClick={() => {
+                                    setSelectedReservation(reservation)
+                                    setOpenDeleteDialog(true)
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-3" />
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-medium">Delete</span>
+                                    <span className="text-xs text-muted-foreground">Remove permanently</span>
+                                  </div>
+                                </Button>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} className="py-8 text-center text-gray-500">
@@ -396,7 +403,6 @@ const handleCancelReservation = () => {
             </Table>
           </div>
 
-          {/* Pagination */}
           <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
@@ -404,9 +410,9 @@ const handleCancelReservation = () => {
                   href="#"
                   className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                   onClick={(e) => {
-                    e.preventDefault();
+                    e.preventDefault()
                     if (currentPage > 1) {
-                      handlePageChange(currentPage - 1);
+                      handlePageChange(currentPage - 1)
                     }
                   }}
                 />
@@ -422,25 +428,23 @@ const handleCancelReservation = () => {
                       href="#"
                       isActive={currentPage === page}
                       onClick={(e) => {
-                        e.preventDefault();
-                        handlePageChange(page as number);
+                        e.preventDefault()
+                        handlePageChange(page as number)
                       }}
                     >
                       {page}
                     </PaginationLink>
                   </PaginationItem>
-                )
+                ),
               )}
               <PaginationItem>
                 <PaginationNext
                   href="#"
-                  className={
-                    currentPage === pagination?.last_page ? "pointer-events-none opacity-50" : ""
-                  }
+                  className={currentPage === pagination?.last_page ? "pointer-events-none opacity-50" : ""}
                   onClick={(e) => {
-                    e.preventDefault();
+                    e.preventDefault()
                     if (currentPage < (pagination?.last_page || 1)) {
-                      handlePageChange(currentPage + 1);
+                      handlePageChange(currentPage + 1)
                     }
                   }}
                 />
@@ -450,13 +454,10 @@ const handleCancelReservation = () => {
         </>
       )}
 
-      {/* Sheet for View/Edit */}
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
         <SheetContent side="right" className="w-[400px] sm:w-[540px]">
           <SheetHeader>
-            <SheetTitle>
-              {mode === "view" ? "Détails de la Réservation" : "Modifier la Réservation"}
-            </SheetTitle>
+            <SheetTitle>{mode === "view" ? "Détails de la Réservation" : "Modifier la Réservation"}</SheetTitle>
           </SheetHeader>
           {selectedReservation && (
             <div className="grid gap-4 py-4">
@@ -488,16 +489,27 @@ const handleCancelReservation = () => {
                     <div className="col-span-3">{selectedReservation.reason || "Non spécifiée"}</div>
                   </div>
                   <div className="grid items-center grid-cols-4 gap-4">
-                    <Label className="col-span-1 text-right">Statut</Label>
-                    <div className="col-span-3">
-                      <Badge
-                        variant={statusConfig[selectedReservation.status]?.variant || "outline"}
-                        className={statusConfig[selectedReservation.status]?.color}
-                      >
-                        {statusConfig[selectedReservation.status]?.label || selectedReservation.status}
-                      </Badge>
+                <Label className="col-span-1 text-right">Statut</Label>
+                <div className="col-span-3">
+                  <Badge
+                    variant={statusConfig[selectedReservation.status].variant}
+                    className={statusConfig[selectedReservation.status].color}
+                  >
+                    {(() => {
+                      const StatusIcon = statusConfig[selectedReservation.status].icon;
+                      const statusTextColor = statusConfig[selectedReservation.status].color.split(" ")[1];
+                      return <StatusIcon className={`w-3 h-3 mr-1.5 ${statusTextColor}`} />;
+                    })()}
+                    {statusConfig[selectedReservation.status].label}
+                  </Badge>
+                </div>
+              </div>
+                  {selectedReservation.cancellation_reason && (
+                    <div className="grid items-center grid-cols-4 gap-4">
+                      <Label className="col-span-1 text-right">Cancellation Reason</Label>
+                      <div className="col-span-3">{selectedReservation.cancellation_reason}</div>
                     </div>
-                  </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -546,7 +558,6 @@ const handleCancelReservation = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
         <DialogContent>
           <DialogHeader>
@@ -564,40 +575,41 @@ const handleCancelReservation = () => {
         </DialogContent>
       </Dialog>
 
-     {/* Cancel Reservation Modal */}
-<Dialog open={openCancelModal} onOpenChange={setOpenCancelModal}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Cancel a Reservation</DialogTitle>
-    </DialogHeader>
-    <div className="space-y-4">
-      <p>Enter the reason for cancellation</p>
-      <Textarea
-        placeholder="Reason for cancellation..."
-        value={cancellationReason}
-        onChange={(e) => setCancellationReason(e.target.value)}
-        className={cancellationReason.trim() ? "" : "border-red-500"}
-      />
-      {!cancellationReason.trim() && (
-        <p className="text-sm text-red-500">Cancellation reason is required.</p>
-      )}
-    </div>
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setOpenCancelModal(false)}>
-        Cancel
-      </Button>
-      <Button
-        variant="destructive"
-        onClick={handleCancelReservation}
-        disabled={!cancellationReason.trim()}
-      >
-        Confirm
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+      <Dialog open={openCancelModal} onOpenChange={setOpenCancelModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Annuler une Réservation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Veuillez entrer la raison de l'annulation :</p>
+            <Textarea
+              placeholder="Raison de l'annulation..."
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value.slice(0, 255))}
+              className={cancellationReason.trim() ? "" : "border-red-500"}
+            />
+            {!cancellationReason.trim() && (
+              <p className="text-sm text-red-500">La raison de l'annulation est requise.</p>
+            )}
+            {cancellationReason.length > 255 && (
+              <p className="text-sm text-red-500">La raison ne peut pas dépasser 255 caractères.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenCancelModal(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelReservation}
+              disabled={!cancellationReason.trim() || cancellationReason.length > 255}
+            >
+              Confirmer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Complete Reservation Modal */}
       <Dialog open={openCompleteModal} onOpenChange={setOpenCompleteModal}>
         <DialogContent>
           <DialogHeader>
@@ -608,16 +620,23 @@ const handleCancelReservation = () => {
             <Textarea
               placeholder="Notes du médecin..."
               value={doctorNotes}
-              onChange={(e) => setDoctorNotes(e.target.value)}
+              onChange={(e) => setDoctorNotes(e.target.value.slice(0, 1000))}
+              className={doctorNotes.trim() ? "" : "border-red-500"}
             />
+            {!doctorNotes.trim() && (
+              <p className="text-sm text-red-500">Les notes du médecin sont requises.</p>
+            )}
+            {doctorNotes.length > 1000 && (
+              <p className="text-sm text-red-500">Les notes ne peuvent pas dépasser 1000 caractères.</p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenCompleteModal(false)}>
               Annuler
             </Button>
-            <Button 
+            <Button
               onClick={handleCompleteReservation}
-              disabled={!doctorNotes.trim()}
+              disabled={!doctorNotes.trim() || doctorNotes.length > 1000}
             >
               Marquer comme Terminé
             </Button>
@@ -625,7 +644,7 @@ const handleCancelReservation = () => {
         </DialogContent>
       </Dialog>
     </div>
-  );
-};
+  )
+}
 
-export default ReservationsPage;
+export default ReservationsPage
