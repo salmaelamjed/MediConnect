@@ -1,74 +1,81 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Doctor } from "@/types/doctor";
 import { Card, CardContent } from "../ui/card";
-import {  Clock, Stethoscope, User, UserPlus } from "lucide-react";
-import { Badge } from "../ui/badge";
+import { MapPin, ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
 
 interface DoctorCardProps {
   doctor: Doctor;
   onReserve: () => void;
   specialty?: string;
+  rating?: number;
+  address?: string;
 }
 
-function DoctorCard({ doctor, onReserve, specialty }: DoctorCardProps) {
+function DoctorCard({ doctor, onReserve, specialty,  address = "456 Oak Street New York, NY 10001" }: DoctorCardProps) {
+ 
+
   return (
-     <Card className="group overflow-hidden transition-all duration-300 border border-border/50 hover:border-primary/20 hover:shadow-lg w-[320px] flex-shrink-0 bg-card">
-      <CardContent className="p-6">
-        <div className="flex items-start gap-4 mb-4">
-          <Avatar className="transition-all w-14 h-14 ring-2 ring-primary/10 group-hover:ring-primary/20">
-            <AvatarImage
-              src="https://i.pinimg.com/736x/83/16/d3/8316d3dbd46ded94493d4ea796325b8a.jpg"
+    <Card className="max-w-md overflow-hidden bg-white border-0 shadow-sm hover:shadow-md">
+      <CardContent className="p-4">
+        {/* Doctor Info Section */}
+        <div className="flex gap-4 mb-4">
+          {/* Doctor Image */}
+          <div className="flex-shrink-0">
+            <img 
+              src="https://i.pinimg.com/736x/f6/2a/0b/f62a0b5e0552976f2b8144f7f4a0a24d.jpg" 
               alt={doctor.name}
-              className="object-cover"
+              className="object-cover w-40 h-40 rounded-xl"
             />
-            <AvatarFallback className="bg-primary/10 text-primary">
-              <User className="w-6 h-6" />
-            </AvatarFallback>
-          </Avatar>
+          </div>
+
+          {/* Doctor Details */}
           <div className="flex-1 min-w-0">
-            <h3 className="mb-1 text-lg font-semibold truncate text-foreground">{doctor.name}</h3>
-            <div className="flex items-center gap-2 mb-2">
-              <Stethoscope className="flex-shrink-0 w-4 h-4 text-primary" />
-              <span className="text-sm truncate text-muted-foreground">{specialty || "General Practice"}</span>
+            {/* Name and Rating */}
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">
+                Dr. {doctor.name}
+              </h3>
             </div>
+
+            {/* Specialty */}
+            <p className="mb-2 text-sm text-gray-500 capitalize">
+              {specialty || "Medical Specialist"}
+            </p>
+
+            {/* Address */}
+            <div className="flex items-start gap-1 mb-2">
+              <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm leading-relaxed text-gray-600">
+                {address}
+              </p>
+            </div>
+            {doctor.consultation_fees && (
+          <div className="pb-4 mb-4 border-b border-gray-100">
+            <span className="text-sm text-gray-600">Consultation Fee: </span>
+            <span className="text-sm font-semibold text-gray-900">
+              ${doctor.consultation_fees}
+            </span>
+          </div>
+        )}
           </div>
         </div>
-
-        <div className="mb-6 space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-            <span className="text-sm font-medium text-foreground">Consultation Fee</span>
-            <div className="text-right">
-              <div className="text-lg font-bold text-primary">{doctor.consultation_fees} MAD</div>
-              <div className="text-xs text-muted-foreground">per session</div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Next available</span>
-            </div>
-            <Badge variant="secondary" className="text-green-700 bg-green-100 hover:bg-green-100">
-              Today 2:30 PM
-            </Badge>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Available slots</span>
-            <Badge variant="outline" className="text-orange-700 border-orange-200">
-              5 slots today
-            </Badge>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <Button
+            onClick={onReserve}
+            className="flex-1 font-medium text-white transition-all duration-200 bg-blue-600 rounded-lg h-11 hover:bg-blue-700"
+          >
+            Book Appointment
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="px-4 text-gray-600 border-gray-200 rounded-lg h-11 hover:bg-gray-50"
+          >
+            Doctor Profile
+            <ExternalLink className="w-4 h-4 ml-1" />
+          </Button>
         </div>
-
-        <Button
-          onClick={onReserve}
-          className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-all duration-200 shadow-sm hover:shadow-md group-hover:scale-[1.02]"
-        >
-          <UserPlus className="w-4 h-4 mr-2" />
-          Book Appointment
-        </Button>
       </CardContent>
     </Card>
   );

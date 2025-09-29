@@ -4,6 +4,7 @@ export interface Cabinet {
   name: string;
   description: string | null;
   image: string;
+  detail_images : string[];
   address: string;
   city: string;
   postal_code: string;

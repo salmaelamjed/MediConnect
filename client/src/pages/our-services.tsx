@@ -17,7 +17,7 @@ interface ISpeciality {
 export const OurServices = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const dispatch = useAppDispatch();
-  const { records: medicalServices, loading, error } = useAppSelector((state) => state.specialities);
+  const { records: medicalServices, loading } = useAppSelector((state) => state.specialities);
 
   // Fetch services on component mount
   useEffect(() => {
@@ -73,13 +73,6 @@ export const OurServices = () => {
           <div className="py-12 text-center">
             <Loading/>
             <p className="mt-4 text-lg text-muted-foreground">Loading services...</p>
-          </div>
-        )}
-
-        {/* Error State */}
-        {loading === "failed" && (
-          <div className="py-12 text-center">
-            <p className="text-lg text-destructive">{error || "Failed to load services."}</p>
           </div>
         )}
 

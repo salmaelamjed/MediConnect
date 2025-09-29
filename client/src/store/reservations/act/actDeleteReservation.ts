@@ -1,9 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-import { isaxiosErrorHandler } from "@/Util";
+import type { Reservation } from "@/types/reservation";
 
 export const actDeleteReservation = createAsyncThunk<
-  { id: number; data: any }, 
+  { id: number; data: Reservation; message: string }, // Return type
   number, // Argument type
   { rejectValue: string } // Reject value type
 >(
@@ -18,9 +18,18 @@ export const actDeleteReservation = createAsyncThunk<
           },
         }
       );
-      return { id: reservationId, data: response.data };
+      return {
+        id: reservationId,
+        data: response.data.data,
+        message: response.data.message || "Reservation deleted successfully",
+      };
     } catch (error) {
-      return rejectWithValue(isaxiosErrorHandler(error));
+      if (axios.isAxiosError(error) && error.response) {
+        return rejectWithValue(
+          error.response.data.message || "Failed to delete reservation"
+        );
+      }
+      return rejectWithValue("An unexpected error occurred");
     }
   }
 );

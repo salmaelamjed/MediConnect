@@ -5,24 +5,27 @@ export const actConfirmReservation = createAsyncThunk(
   "reservations/actConfirmReservation",
   async (id: number, { rejectWithValue }) => {
     try {
-      const accessToken = localStorage.getItem("accessToken");
-
       const response = await axios.post(
         `http://localhost:8000/api/reservations/${id}/confirm`,
-        null, // Body vide puisque c'est une confirmation
+        null,
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
       );
-      return response.data;
+      return {
+        id,
+        data: response.data.data,
+        message: response.data.message || "Reservation confirmed successfully",
+      };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        return rejectWithValue(error.response?.data.message || error.message);
-      } else {
-        return rejectWithValue("An unexpected error");
+      if (axios.isAxiosError(error) && error.response) {
+        return rejectWithValue(
+          error.response.data.message || "Failed to confirm reservation"
+        );
       }
+      return rejectWithValue("An unexpected error occurred");
     }
   }
 );

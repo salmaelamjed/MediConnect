@@ -22,6 +22,7 @@ class Cabinet extends Model
         'name',
         'description',
         'image',
+        'detail_images',
         'address',
         'city',
         'postal_code',
@@ -43,6 +44,7 @@ class Cabinet extends Model
     {
         return [
             'working_days' => 'array',
+            'detail_images' => 'array',
             'opening_time' => 'datetime:H:i',
             'closing_time' => 'datetime:H:i',
             'latitude' => 'decimal:7',

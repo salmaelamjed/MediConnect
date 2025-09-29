@@ -39,6 +39,7 @@ public function allCabinetsActive(): JsonResponse
             'cabinets.name',
             'cabinets.description',
             'cabinets.image',
+            'cabinets.detail_images',
             'cabinets.address',
             'cabinets.city',
             'cabinets.postal_code',
@@ -67,9 +68,17 @@ public function allCabinetsActive(): JsonResponse
      ])
         ->get();
 
-        // Transformer les specialities en tableau de noms
+        // Transformer les specialities en tableau de noms et traiter les images
         $cabinets = $cabinets->map(function ($cabinet) {
             $cabinet->specialities = $cabinet->specialities->pluck('name')->toArray();
+
+            // S'assurer que detail_images est un tableau
+            if (is_string($cabinet->detail_images)) {
+                $cabinet->detail_images = json_decode($cabinet->detail_images, true) ?? [];
+            } else if (is_null($cabinet->detail_images)) {
+                $cabinet->detail_images = [];
+            }
+
             return $cabinet;
         });
 
@@ -122,7 +131,38 @@ public function allCabinetsActive(): JsonResponse
     public function allCabinets(): JsonResponse
     {
         try {
-            $cabinets = Cabinet::all();
+            $cabinets = Cabinet::select([
+                'id',
+                'owner_id',
+                'name',
+                'description',
+                'image',
+                'detail_images',
+                'address',
+                'city',
+                'postal_code',
+                'email',
+                'opening_time',
+                'closing_time',
+                'working_days',
+                'latitude',
+                'longitude',
+                'is_active',
+                'created_at',
+                'updated_at'
+            ])->get();
+
+            // Traiter les images détaillées
+            $cabinets = $cabinets->map(function ($cabinet) {
+                // S'assurer que detail_images est un tableau
+                if (is_string($cabinet->detail_images)) {
+                    $cabinet->detail_images = json_decode($cabinet->detail_images, true) ?? [];
+                } else if (is_null($cabinet->detail_images)) {
+                    $cabinet->detail_images = [];
+                }
+
+                return $cabinet;
+            });
 
             return response()->json([
                 'success' => true,
@@ -171,7 +211,26 @@ public function allCabinetsActive(): JsonResponse
             }
 
             // Recherche avec la syntaxe correcte pour LIKE
-            $cabinets = Cabinet::where('name', 'like', '%' . $name . '%')->get();
+            $cabinets = Cabinet::select([
+                'id',
+                'owner_id',
+                'name',
+                'description',
+                'image',
+                'detail_images',
+                'address',
+                'city',
+                'postal_code',
+                'email',
+                'opening_time',
+                'closing_time',
+                'working_days',
+                'latitude',
+                'longitude',
+                'is_active',
+                'created_at',
+                'updated_at'
+            ])->where('name', 'like', '%' . $name . '%')->get();
 
             if ($cabinets->isEmpty()) {
                 return response()->json([
@@ -181,6 +240,18 @@ public function allCabinetsActive(): JsonResponse
                     'count' => 0
                 ], 404);
             }
+
+            // Traiter les images détaillées
+            $cabinets = $cabinets->map(function ($cabinet) {
+                // S'assurer que detail_images est un tableau
+                if (is_string($cabinet->detail_images)) {
+                    $cabinet->detail_images = json_decode($cabinet->detail_images, true) ?? [];
+                } else if (is_null($cabinet->detail_images)) {
+                    $cabinet->detail_images = [];
+                }
+
+                return $cabinet;
+            });
 
             // Pour une collection, on ne peut pas accéder directement aux propriétés
             // On prend le premier élément si on veut les coordonnées
@@ -215,6 +286,167 @@ public function allCabinetsActive(): JsonResponse
         }
     }
 
+
+    /**
+ * Récupérer les détails complets d'un cabinet par ID
+ *
+ * @param int $id
+ * @return JsonResponse
+ */
+public function show(int $id): JsonResponse
+{
+    try {
+        // Validation de l'ID
+        if ($id <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ID invalide',
+                'error' => 'Paramètre invalide'
+            ], 400);
+        }
+
+        // Vérifier la connexion à la base de données
+        try {
+            DB::connection()->getPdo();
+        } catch (\Exception $e) {
+            Log::error('Connexion à la base de données échouée: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de se connecter à la base de données',
+                'error' => 'Erreur de connexion'
+            ], 500);
+        }
+
+        // Récupérer le cabinet avec ses relations
+        $cabinet = Cabinet::select(
+            'cabinets.id',
+            'cabinets.owner_id',
+            'cabinets.name',
+            'cabinets.description',
+            'cabinets.image',
+            'cabinets.detail_images',
+            'cabinets.address',
+            'cabinets.city',
+            'cabinets.postal_code',
+            'cabinets.email',
+            'cabinets.opening_time',
+            'cabinets.closing_time',
+            'cabinets.working_days',
+            'cabinets.latitude',
+            'cabinets.longitude',
+            'cabinets.is_active',
+            'cabinets.created_at',
+            'cabinets.updated_at',
+            'doctors.name as owner_name',
+            'users.email as owner_email'
+        )
+        ->where('cabinets.id', $id)
+        ->leftJoin('users', 'cabinets.owner_id', '=', 'users.id')
+        ->leftJoin('doctors', 'users.id', '=', 'doctors.user_id')
+        ->with([
+            'specialities' => function ($query) {
+                $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
+            },
+            'doctors' => function ($query) {
+                $query->select(
+                    'doctors.id',
+                    'doctors.user_id',
+                    'doctors.cabinet_id',
+                    'doctors.name',
+                    'doctors.license_number',
+                    'doctors.bio',
+                    'doctors.consultation_fees',
+                    'doctors.start_time',
+                    'doctors.end_time',
+                    'doctors.available_days',
+                    'doctors.is_active'
+                )->with([
+                    'speciality' => function ($query) {
+                        $query->select('specialities.id', 'specialities.name');
+                    }
+                ]);
+            }
+        ])
+        ->first();
+
+        // Vérifier si le cabinet existe
+        if (!$cabinet) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cabinet non trouvé',
+                'error' => 'Ressource non trouvée'
+            ], 404);
+        }
+
+        // Traiter les images détaillées
+        if (is_string($cabinet->detail_images)) {
+            $cabinet->detail_images = json_decode($cabinet->detail_images, true) ?? [];
+        } else if (is_null($cabinet->detail_images)) {
+            $cabinet->detail_images = [];
+        }
+
+        // Transformer les specialities en tableau avec plus de détails
+        $cabinet->specialities = $cabinet->specialities->map(function ($speciality) {
+            return [
+                'id' => $speciality->id,
+                'name' => $speciality->name,
+                'description' => $speciality->description,
+                'icon' => $speciality->icon,
+                'is_active' => $speciality->is_active
+            ];
+        })->toArray();
+
+        // Transformer les doctors pour inclure la spécialité
+        $cabinet->doctors = $cabinet->doctors->map(function ($doctor) {
+            return [
+                'id' => $doctor->id,
+                'user_id' => $doctor->user_id,
+                'cabinet_id' => $doctor->cabinet_id,
+                'name' => $doctor->name,
+                'license_number' => $doctor->license_number,
+                'bio' => $doctor->bio,
+                'consultation_fees' => $doctor->consultation_fees,
+                'start_time' => $doctor->start_time,
+                'end_time' => $doctor->end_time,
+                'available_days' => $doctor->available_days,
+                'is_active' => $doctor->is_active,
+                'speciality' => $doctor->speciality ? [
+                    'id' => $doctor->speciality->id,
+                    'name' => $doctor->speciality->name
+                ] : null
+            ];
+        })->toArray();
+
+        return response()->json([
+            'success' => true,
+            'data' => $cabinet,
+            'message' => 'Détails du cabinet récupérés avec succès'
+        ], 200);
+
+    } catch (QueryException $e) {
+        Log::error('Erreur de base de données dans show: ' . $e->getMessage(), [
+            'sql' => $e->getSql(),
+            'bindings' => $e->getBindings()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la récupération des détails du cabinet',
+            'error' => 'Erreur de base de données: ' . $e->getMessage()
+        ], 500);
+
+    } catch (\Exception $e) {
+        Log::error('Erreur inattendue dans show: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Une erreur inattendue s\'est produite',
+            'error' => 'Erreur serveur: ' . $e->getMessage()
+        ], 500);
+    }
+}
     /**
      * Récupérer un cabinet par adresse
      *
@@ -234,7 +466,26 @@ public function allCabinetsActive(): JsonResponse
                 ], 400);
             }
 
-            $cabinets = Cabinet::where('address', 'like', '%' . $address . '%')->get();
+            $cabinets = Cabinet::select([
+                'id',
+                'owner_id',
+                'name',
+                'description',
+                'image',
+                'detail_images',
+                'address',
+                'city',
+                'postal_code',
+                'email',
+                'opening_time',
+                'closing_time',
+                'working_days',
+                'latitude',
+                'longitude',
+                'is_active',
+                'created_at',
+                'updated_at'
+            ])->where('address', 'like', '%' . $address . '%')->get();
 
             if ($cabinets->isEmpty()) {
                 return response()->json([
@@ -244,6 +495,18 @@ public function allCabinetsActive(): JsonResponse
                     'count' => 0
                 ], 404);
             }
+
+            // Traiter les images détaillées
+            $cabinets = $cabinets->map(function ($cabinet) {
+                // S'assurer que detail_images est un tableau
+                if (is_string($cabinet->detail_images)) {
+                    $cabinet->detail_images = json_decode($cabinet->detail_images, true) ?? [];
+                } else if (is_null($cabinet->detail_images)) {
+                    $cabinet->detail_images = [];
+                }
+
+                return $cabinet;
+            });
 
             // Pour une collection, on prend le premier élément pour les coordonnées
             $firstCabinet = $cabinets->first();
@@ -294,7 +557,26 @@ public function allCabinetsActive(): JsonResponse
                 ], 400);
             }
 
-            $cabinet = Cabinet::find($id);
+            $cabinet = Cabinet::select([
+                'id',
+                'owner_id',
+                'name',
+                'description',
+                'image',
+                'detail_images',
+                'address',
+                'city',
+                'postal_code',
+                'email',
+                'opening_time',
+                'closing_time',
+                'working_days',
+                'latitude',
+                'longitude',
+                'is_active',
+                'created_at',
+                'updated_at'
+            ])->find($id);
 
             if (!$cabinet) {
                 return response()->json([
@@ -302,6 +584,13 @@ public function allCabinetsActive(): JsonResponse
                     'message' => 'Cabinet non trouvé',
                     'error' => 'Ressource non trouvée'
                 ], 404);
+            }
+
+            // Traiter les images détaillées
+            if (is_string($cabinet->detail_images)) {
+                $cabinet->detail_images = json_decode($cabinet->detail_images, true) ?? [];
+            } else if (is_null($cabinet->detail_images)) {
+                $cabinet->detail_images = [];
             }
 
             return response()->json([

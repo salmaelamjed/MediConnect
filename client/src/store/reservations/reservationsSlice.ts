@@ -1,4 +1,3 @@
-// src/store/reservations/reservationsSlice.ts
 import { createSlice } from "@reduxjs/toolkit";
 import { isString } from "@/types/guard";
 import type { Reservation } from "@/types/reservation";
@@ -7,7 +6,7 @@ import { actCreateReservation } from "./act/actCreateReservation";
 import { actGetAvailableSlots } from "./act/actGetAvailableSlots";
 import { actGetReservations } from "./act/actGetReservations";
 import { actDeleteReservation } from "./act/actDeleteReservation";
-import { actUpdateReservation } from "./act/actUpdateReservation"; // Ajoutez cet import
+import { actUpdateReservation } from "./act/actUpdateReservation";
 import type { PaginationInfo } from "@/types/pagination";
 import { actConfirmReservation } from "./act/actConfirmReservation";
 import { actCancelReservation } from "./act/actCancelReservation";
@@ -19,6 +18,7 @@ interface IReservationsState {
   selectedReservation: Reservation | null;
   loading: TLoading;
   error: string | null;
+  successMessage: string | null; // New field for success messages
   availableSlots: string[];
   slotsLoading: TLoading;
   slotsError: string | null;
@@ -30,6 +30,7 @@ const initialState: IReservationsState = {
   selectedReservation: null,
   loading: "idle",
   error: null,
+  successMessage: null,
   availableSlots: [],
   slotsLoading: "idle",
   slotsError: null,
@@ -46,6 +47,7 @@ const reservationsSlice = createSlice({
       state.availableSlots = [];
       state.slotsError = null;
       state.pagination = null;
+      state.successMessage = null;
     },
   },
   extraReducers: (builder) => {
@@ -54,10 +56,13 @@ const reservationsSlice = createSlice({
       .addCase(actCreateReservation.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actCreateReservation.fulfilled, (state, action) => {
         state.loading = "succeeded";
         state.reservations.push(action.payload);
+        state.successMessage =
+          action.payload.message || "Reservation created successfully";
       })
       .addCase(actCreateReservation.rejected, (state, action) => {
         state.loading = "failed";
@@ -85,6 +90,7 @@ const reservationsSlice = createSlice({
       .addCase(actGetReservations.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actGetReservations.fulfilled, (state, action) => {
         state.loading = "succeeded";
@@ -114,12 +120,15 @@ const reservationsSlice = createSlice({
       .addCase(actDeleteReservation.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actDeleteReservation.fulfilled, (state, action) => {
         state.loading = "succeeded";
         state.reservations = state.reservations.filter(
-          (reservation) => reservation.id !== action.payload.id // TypeScript sait que action.payload.id est un number
+          (reservation) => reservation.id !== action.payload.id
         );
+        state.successMessage =
+          action.payload.message || "Reservation deleted successfully";
       })
       .addCase(actDeleteReservation.rejected, (state, action) => {
         state.loading = "failed";
@@ -131,14 +140,16 @@ const reservationsSlice = createSlice({
       .addCase(actUpdateReservation.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actUpdateReservation.fulfilled, (state, action) => {
         state.loading = "succeeded";
         state.reservations = state.reservations.map((reservation) =>
           reservation.id === action.payload.id
-            ? { ...reservation, ...action.payload.data } // Adjust based on API response
+            ? { ...reservation, status: action.payload.data.status }
             : reservation
         );
+        state.successMessage = action.payload.message;
       })
       .addCase(actUpdateReservation.rejected, (state, action) => {
         state.loading = "failed";
@@ -150,14 +161,16 @@ const reservationsSlice = createSlice({
       .addCase(actConfirmReservation.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actConfirmReservation.fulfilled, (state, action) => {
         state.loading = "succeeded";
         state.reservations = state.reservations.map((reservation) =>
           reservation.id === action.payload.id
-            ? { ...reservation, ...action.payload }
+            ? { ...reservation, status: "confirmed" }
             : reservation
         );
+        state.successMessage = action.payload.message;
       })
       .addCase(actConfirmReservation.rejected, (state, action) => {
         state.loading = "failed";
@@ -169,6 +182,7 @@ const reservationsSlice = createSlice({
       .addCase(actCancelReservation.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actCancelReservation.fulfilled, (state, action) => {
         state.loading = "succeeded";
@@ -177,10 +191,11 @@ const reservationsSlice = createSlice({
             ? {
                 ...reservation,
                 status: "cancelled",
-                cancellation_reason: action.payload.cancellation_reason,
+                cancellation_reason: action.payload.data.cancellation_reason,
               }
             : reservation
         );
+        state.successMessage = action.payload.message;
       })
       .addCase(actCancelReservation.rejected, (state, action) => {
         state.loading = "failed";
@@ -188,14 +203,24 @@ const reservationsSlice = createSlice({
           ? action.payload
           : "Unknown error";
       })
-      //Complete Reservation
+      // Complete Reservation
       .addCase(actCompleteReservation.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actCompleteReservation.fulfilled, (state, action) => {
         state.loading = "succeeded";
-        state.reservations = action.payload;
+        state.reservations = state.reservations.map((reservation) =>
+          reservation.id === action.payload.id
+            ? {
+                ...reservation,
+                status: "completed",
+                doctor_notes: action.payload.data.doctor_notes || "",
+              }
+            : reservation
+        );
+        state.successMessage = action.payload.message;
       })
       .addCase(actCompleteReservation.rejected, (state, action) => {
         state.loading = "failed";
@@ -207,6 +232,7 @@ const reservationsSlice = createSlice({
       .addCase(actGetStatsReservations.pending, (state) => {
         state.loading = "pending";
         state.error = null;
+        state.successMessage = null;
       })
       .addCase(actGetStatsReservations.fulfilled, (state, action) => {
         state.loading = "succeeded";
@@ -221,6 +247,11 @@ const reservationsSlice = createSlice({
   },
 });
 
-export { actCreateReservation, actGetAvailableSlots, actDeleteReservation, actUpdateReservation };
+export {
+  actCreateReservation,
+  actGetAvailableSlots,
+  actDeleteReservation,
+  actUpdateReservation,
+};
 export const { reservationsRecordsCleanUp } = reservationsSlice.actions;
 export default reservationsSlice.reducer;

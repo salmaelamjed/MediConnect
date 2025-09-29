@@ -1,27 +1,38 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-import type { Reservation } from "@/types/reservation";
-import { isaxiosErrorHandler } from "@/Util";
+
+interface UpdateReservationPayload {
+  id: number;
+  updates: {
+    status: string;
+  };
+}
 
 export const actUpdateReservation = createAsyncThunk(
-  "reservations/actUpdateReservation",
-  async (
-    { id, updates }: { id: number; updates: Partial<Reservation> },
-    { rejectWithValue }
-  ) => {
+  "reservations/updateReservation",
+  async (payload: UpdateReservationPayload, { rejectWithValue }) => {
     try {
       const response = await axios.put(
-        `http://localhost:8000/api/reservations/${id}/reschedule`,
-        updates,
+        `http://localhost:8000/api/reservations/${payload.id}/reschedule`,
+        { status: payload.updates.status },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
       );
-      return { id, data: response.data };
+      return {
+        id: payload.id,
+        data: response.data.data,
+        message: response.data.message || "Reservation updated successfully",
+      };
     } catch (error) {
-      return rejectWithValue(isaxiosErrorHandler(error));
+      if (axios.isAxiosError(error) && error.response) {
+        return rejectWithValue(
+          error.response.data.message || "Failed to update reservation"
+        );
+      }
+      return rejectWithValue("An unexpected error occurred");
     }
   }
 );

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CabinetController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\SpecialityController;
 use App\Http\Controllers\Api\CabinetSearchController;
@@ -56,7 +57,8 @@ Route::prefix('search')->group(function () {
 Route::get('/cabinets/open-now', [CabinetSearchController::class, 'getOpenNow']);
 Route::get('/cabinets/available', [CabinetSearchController::class, 'getAvailable']);
 Route::get('/cabinets/nearest', [CabinetSearchController::class, 'getNearest']);
-
+// Route to get detailed information about a specific cabinet by ID
+Route::get('/cabinets/{id}', [CabinetController::class, 'show']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -111,4 +113,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/doctors/{doctorId}/available-slots', [ReservationController::class, 'getAvailableSlots'])
         ->name('reservations.available-slots');
     Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
+
+    // Get all notifications for the authenticated user
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+
+    // Get unread notifications count
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+
+    // Mark a specific notification as read
+    Route::put('/notifications/{notificationId}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+
+    // Mark all notifications as read
+    Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
 });

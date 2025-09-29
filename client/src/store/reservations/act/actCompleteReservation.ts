@@ -1,26 +1,36 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
+interface CompleteReservationPayload {
+  id: number;
+  doctor_notes?: string;
+}
+
 export const actCompleteReservation = createAsyncThunk(
   "reservations/actCompleteReservation",
-  async ({ id ,doctor_notes}:{id:number,doctor_notes:string}, { rejectWithValue }) => {
+  async (payload: CompleteReservationPayload, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `http://localhost:8000/api/reservations/${id}/complete`,
-         doctor_notes,
+        `http://localhost:8000/api/reservations/${payload.id}/complete`,
+        { doctor_notes: payload.doctor_notes?.trim() || "" },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
         }
       );
-      return response.data;
+      return {
+        id: payload.id,
+        data: response.data.data,
+        message: response.data.message || "Consultation completed successfully",
+      };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        return rejectWithValue(error.response?.data.message || error.message);
-      } else {
-        return rejectWithValue("An unexpected error");
+      if (axios.isAxiosError(error) && error.response) {
+        return rejectWithValue(
+          error.response.data.message || "Failed to complete reservation"
+        );
       }
+      return rejectWithValue("An unexpected error occurred");
     }
   }
 );

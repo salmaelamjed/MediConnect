@@ -2,7 +2,6 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock } from 'lucide-react';
-import { MedicalIcon } from "@/Util/iconMapping";
 import { Link } from 'react-router-dom';
 
 interface ISpeciality {
@@ -35,14 +34,8 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick }) =>
     >
       <CardContent className="flex flex-col items-center p-6 space-y-4 text-center">
         {/* Icon with Animation */}
-        <div className="relative p-4 transition-all duration-300 rounded-full bg-primary/10 group-hover:bg-primary/20">
-          <MedicalIcon
-            iconName={service.icon}
-            size={48}
-            variant="primary"
-            className="transition-transform duration-300 group-hover:scale-110"
-            aria-hidden="true"
-          />
+        <div className="object-contain overflow-hidden h-80">
+          <img src={service.icon} alt='service name'/>
         </div>
 
         {/* Content */}
@@ -58,7 +51,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onClick }) =>
         {/* Status Badge */}
         <div className="absolute top-4 right-4">
           <Badge
-            variant={service.is_active ? "success" : "secondary"}
+            variant={service.is_active ? "completed" : "cancel"}
             className={`text-xs font-medium transition-opacity duration-300 group-hover:opacity-100 ${
               service.is_active ? 'bg-green-500/10 text-green-600' : 'bg-gray-200 text-gray-600'
             }`}

@@ -26,6 +26,7 @@ export interface Reservation {
   patient: Patient;
   doctor: Doctor;
   cabinet: Cabinet;
+  message: string;
 }
 
 export interface Doctor {

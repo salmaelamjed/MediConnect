@@ -337,8 +337,9 @@ function ExpandedCabinetDetails({
                 <Calendar
                   mode="single"
                   selected={selectedDate || undefined}
+                  numberOfMonths={2}
                   onSelect={(date) => date && onDateSelect(date)}
-                  className="border rounded-md shadow-sm"
+                  className="w-full max-w-lg border rounded-md shadow-sm"
                   disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                 />
               </div>
