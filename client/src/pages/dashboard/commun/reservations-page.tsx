@@ -171,16 +171,16 @@ const ReservationsPage = () => {
     }
   };
 
-  const handleConfirmReservation = () => {
-    if (selectedReservation && selectedReservation.id) {
-      setLoadingStatus((prev) => ({ ...prev, [selectedReservation.id]: true }));
-      dispatch(actConfirmReservation(selectedReservation.id)).then((result) => {
+  const handleConfirmReservation = (reservation: Reservation) => {
+    if (reservation && reservation.id) {
+      setLoadingStatus((prev) => ({ ...prev, [reservation.id]: true }));
+      dispatch(actConfirmReservation(reservation.id)).then((result) => {
         if (actConfirmReservation.fulfilled.match(result)) {
           dispatch(actGetReservations(currentPage)).finally(() => {
-            setLoadingStatus((prev) => ({ ...prev, [selectedReservation.id]: false }));
+            setLoadingStatus((prev) => ({ ...prev, [reservation.id]: false }));
           });
         } else if (actConfirmReservation.rejected.match(result)) {
-          setLoadingStatus((prev) => ({ ...prev, [selectedReservation.id]: false }));
+          setLoadingStatus((prev) => ({ ...prev, [reservation.id]: false }));
           toast.error(isString(result.payload) ? result.payload : "Failed to confirm reservation");
         }
       });
@@ -194,7 +194,7 @@ const ReservationsPage = () => {
     } else if (newStatus === "completed") {
       setOpenCompleteModal(true);
     } else if (newStatus === "confirmed") {
-      handleConfirmReservation();
+      handleConfirmReservation(reservation);
     } else {
       setLoadingStatus((prev) => ({ ...prev, [reservation.id]: true }));
       dispatch(
@@ -279,7 +279,8 @@ const ReservationsPage = () => {
   return (
     <div className="h-screen p-6">
       <h2 className="mb-6 text-2xl font-bold">Liste des Réservations</h2>
-<>
+
+       <>
           <div className="overflow-x-auto">
             <Table className="w-full bg-white rounded-lg shadow table-auto min-w-[600px]">
               <TableHeader>
@@ -368,6 +369,7 @@ const ReservationsPage = () => {
                                 variant="ghost"
                                 size="sm"
                                 className="w-8 h-8 p-0 transition-colors duration-200 hover:bg-accent"
+                                disabled={isLoading}
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                                 <span className="sr-only">Open menu</span>
@@ -501,7 +503,7 @@ const ReservationsPage = () => {
                 <>
                   <div className="grid items-center grid-cols-4 gap-4">
                     <Label className="col-span-1 text-right">ID</Label>
-                    <div className="col-span-3">RES_{selectedReservation.id}</div>
+                    <div className="col-span-3"><span className="text-primary">RES_{selectedReservation.id}</span></div>
                   </div>
                   <div className="grid items-center grid-cols-4 gap-4">
                     <Label className="col-span-1 text-right">Patient</Label>
@@ -561,11 +563,9 @@ const ReservationsPage = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="cancelled">Cancelled</SelectItem>
-                        <SelectItem value="no_show">No Show</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -625,7 +625,7 @@ const ReservationsPage = () => {
               placeholder="Raison de l'annulation..."
               value={cancellationReason}
               onChange={(e) => setCancellationReason(e.target.value.slice(0, 255))}
-              className={cancellationReason.trim() ? "" : "border-red-500"}
+              className={!cancellationReason.trim() ? "border-red-500" : ""}
             />
             {!cancellationReason.trim() && (
               <p className="text-sm text-red-500">La raison de l'annulation est requise.</p>
