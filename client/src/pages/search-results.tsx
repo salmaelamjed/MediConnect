@@ -968,7 +968,7 @@ export default function SearchResults() {
                             </Button>
                             <Button
                               className="px-4 py-2 text-white transition-all shadow-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
-                              onClick={() => navigate(`/cabinets/${cabinet.id}`)}
+                              onClick={() => navigate(`/reservations/${cabinet.id}`)}
                             >
                               Book Appointment
                             </Button>

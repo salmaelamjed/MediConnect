@@ -1,5 +1,6 @@
 import ClinicDetails from "@/components/shared/clinic-details";
 import ReservationsPage from "@/pages/dashboard/commun/reservations-page";
+import NotificationsPage from "@/pages/notifications-page";
 import ReservationSteps from "@/pages/reservationSteps";
 import SearchResults from "@/pages/search-results";
 import { StethoscopeIcon } from "lucide-react";
@@ -90,7 +91,8 @@ const router = createBrowserRouter([
      {path:"/doctors/speciality/:id",element:<h1>doctor speciality</h1>},
      {path:"/search",element:<SearchResults/>},
      {path:"cabinets/:id",element:<ClinicDetails/>},
-     {path:'/reservations',element:<ReservationSteps/>},
+     {path:'/reservations/:id',element:<ReservationSteps/>},
+     {path:"/notifications" , element:<NotificationsPage/>}
     ],
   },
   // Doctor routes 
@@ -127,6 +129,7 @@ const router = createBrowserRouter([
           { path: "calendar", element: <Calendar/> },
           { path: "reports", element: <ReportsPage/> },
           { path: "settings", element: <Settings /> },
+           {path:"notifications" , element:<NotificationsPage/>}
         ],
       },
     ],
@@ -163,6 +166,7 @@ const router = createBrowserRouter([
           { path: "specialties", element: <SpecialtiesManagement/> },
           { path: "reports", element: <AdminReports/> },
           { path: "settings", element: <AdminSettings /> },
+           {path:"notifications" , element:<NotificationsPage/>},
         ],
       },
     ],
@@ -198,6 +202,7 @@ const router = createBrowserRouter([
           { path: "specialties", element: <OwnerSpecialitiesMagement/> },
           { path: "reports", element: <OwnerReports/> },
           { path: "settings", element: <CabinetSettings /> },
+           {path:"notifications" , element:<NotificationsPage/>},
         ],
       },
     ],

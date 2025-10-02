@@ -1,6 +1,6 @@
 "use client"
 
-import { Menu, X, User, Calendar, Home, Info, Briefcase, Users, BookOpen, LogOut } from "lucide-react"
+import { Menu, X, User, Calendar, Home, Info, Briefcase, Users, BookOpen, LogOut, Bell } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
 import logo from '@/assets/logo.svg'
@@ -26,9 +26,11 @@ import {
 } from "@/components/ui/dialog"
 import { actAuthLogout } from "@/store/auth/authSlice"
 import { toast } from "sonner"
+import { actGetNotifications } from "@/store/notifications/act/actGetNotifications"
 
 const Header = () => {
   const { user } = useAppSelector((state) => state.auth)
+  const { notifications } = useAppSelector((state) => state.notifications)
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -36,6 +38,21 @@ const Header = () => {
   const token = localStorage.getItem("accessToken")
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+
+  // Fetch notifications on mount if logged in
+  useEffect(() => {
+    if (token) {
+      dispatch(actGetNotifications())
+    }
+  }, [dispatch, token])
+
+  // Get unread notifications count
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
+  // Get latest 5 notifications (sorted by created_at descending)
+  const recentNotifications = [...notifications]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5)
 
   // Effet de scroll pour changer l'apparence du header
   useEffect(() => {
@@ -113,6 +130,74 @@ const Header = () => {
             <div className="flex items-center space-x-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="relative rounded-full">
+                    <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                    <span className="sr-only">Notifications</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  <DropdownMenuLabel className="flex items-center justify-between">
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {unreadCount} unread
+                      </span>
+                    )}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  { recentNotifications.length === 0 ? (
+                    <DropdownMenuItem className="justify-center">
+                      <span className="text-sm text-muted-foreground">No notifications</span>
+                    </DropdownMenuItem>
+                  ) : (
+                    <>
+                      {recentNotifications.map((notification) => (
+                        <DropdownMenuItem 
+                          key={notification.id} 
+                          className="flex flex-col items-start gap-1 cursor-pointer"
+                          onClick={() => {
+                            // Optionally mark as read or navigate to action_url
+                            if (notification.action_url) {
+                              navigate(notification.action_url)
+                            }
+                          }}
+                        >
+                          <div className="flex items-center w-full gap-2">
+                            <div className="flex-1">
+                              <p className={`text-sm font-medium ${!notification.is_read ? 'font-semibold' : ''}`}>
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {notification.message}
+                              </p>
+                            </div>
+                            {!notification.is_read && (
+                              <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(notification.created_at).toLocaleDateString()}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="justify-center text-sm text-primary hover:text-primary"
+                        onClick={() => navigate('/notifications')}
+                      >
+                        View all notifications →
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative w-12 h-12 p-0 transition-all duration-200 rounded-full md:h-10 md:w-10 hover:ring-2 hover:ring-primary/20">
                     <Avatar className="w-12 h-12 md:h-10 md:w-10">
                       <AvatarImage src="https://i.pinimg.com/736x/59/92/db/5992db2c560e19ec9a2ec15c932a5114.jpg" />
@@ -173,12 +258,82 @@ const Header = () => {
       {/* Mobile Menu Button */}
       <div className="flex items-center space-x-2 sm:space-x-3 md:hidden">
         {token && user && (
-          <Avatar className="mr-2 w-7 h-7 sm:w-8 sm:h-8">
-            <AvatarImage src="https://i.pinimg.com/736x/59/92/db/5992db2c560e19ec9a2ec15c932a5114.jpg" />
-            <AvatarFallback className="text-xs font-semibold sm:text-sm bg-primary/10 text-primary">
-              {user.name?.charAt(0) || user.email?.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="relative rounded-full">
+                  <Bell className="w-4 h-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                  <span className="sr-only">Notifications</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {unreadCount} unread
+                    </span>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                { recentNotifications.length === 0 ? (
+                  <DropdownMenuItem className="justify-center">
+                    <span className="text-sm text-muted-foreground">No notifications</span>
+                  </DropdownMenuItem>
+                ) : (
+                  <>
+                    {recentNotifications.map((notification) => (
+                      <DropdownMenuItem 
+                        key={notification.id} 
+                        className="flex flex-col items-start gap-1 cursor-pointer"
+                        onClick={() => {
+                          // Optionally mark as read or navigate to action_url
+                          if (notification.action_url) {
+                            navigate(notification.action_url)
+                          }
+                        }}
+                      >
+                        <div className="flex items-center w-full gap-2">
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${!notification.is_read ? 'font-semibold' : ''}`}>
+                              {notification.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {notification.message}
+                            </p>
+                          </div>
+                          {!notification.is_read && (
+                            <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(notification.created_at).toLocaleDateString()}
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="justify-center text-sm text-primary hover:text-primary"
+                      onClick={() => navigate('/notifications')}
+                    >
+                      View all notifications →
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Avatar className="mr-2 w-7 h-7 sm:w-8 sm:h-8">
+              <AvatarImage src="https://i.pinimg.com/736x/59/92/db/5992db2c560e19ec9a2ec15c932a5114.jpg" />
+              <AvatarFallback className="text-xs font-semibold sm:text-sm bg-primary/10 text-primary">
+                {user.name?.charAt(0) || user.email?.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+          </>
         )}
   
   <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -249,7 +404,7 @@ const Header = () => {
                     className="flex items-center px-2 py-2 sm:px-3 sm:py-2.5 md:px-3 md:py-2 lg:px-3 lg:py-3 xl:px-4 xl:py-3.5 space-x-2 sm:space-x-3 text-gray-700 transition-all duration-200 rounded-lg hover:text-primary hover:bg-primary/5"
                     onClick={() => setIsOpen(false)}
                   >
-                    <IconComponent className="w-4 h-4 text-gray-500 transition-colors duration-200 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6" />
+                    <IconComponent className="w-6 h-6 text-gray-500 transition-colors duration-200 sm:w-5 sm:h-5 md:w-4 md:h-4 lg:w-6 lg:h-6 xl:w-6 xl:h-6" />
                     <span className="text-sm font-medium sm:text-base md:text-sm lg:text-base xl:text-lg">{item.name}</span>
                   </Link>
                 )

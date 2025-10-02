@@ -359,10 +359,13 @@ public function show(int $id): JsonResponse
                     'doctors.start_time',
                     'doctors.end_time',
                     'doctors.available_days',
-                    'doctors.is_active'
-                )->with([
+                    'doctors.is_active',
+                    'doctors.speciality_id' // Include speciality_id for debugging
+                )
+                ->whereNotNull('doctors.speciality_id') // Exclude doctors with null speciality_id
+                ->with([
                     'speciality' => function ($query) {
-                        $query->select('specialities.id', 'specialities.name');
+                        $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
                     }
                 ]);
             }
@@ -385,14 +388,15 @@ public function show(int $id): JsonResponse
             $cabinet->detail_images = [];
         }
 
-        // Transformer les specialities en tableau avec plus de détails
+        // Transformer les specialities
         $cabinet->specialities = $cabinet->specialities->map(function ($speciality) {
             return [
                 'id' => $speciality->id,
                 'name' => $speciality->name,
                 'description' => $speciality->description,
                 'icon' => $speciality->icon,
-                'is_active' => $speciality->is_active
+                'is_active' => $speciality->is_active,
+                'pivot' => $speciality->pivot // Include pivot data if needed
             ];
         })->toArray();
 
@@ -412,10 +416,16 @@ public function show(int $id): JsonResponse
                 'is_active' => $doctor->is_active,
                 'speciality' => $doctor->speciality ? [
                     'id' => $doctor->speciality->id,
-                    'name' => $doctor->speciality->name
+                    'name' => $doctor->speciality->name,
+                    'description' => $doctor->speciality->description,
+                    'icon' => $doctor->speciality->icon,
+                    'is_active' => $doctor->speciality->is_active
                 ] : null
             ];
         })->toArray();
+
+        // Log pour débogage
+        Log::info('Cabinet details retrieved', ['cabinet_id' => $id, 'doctors' => $cabinet->doctors]);
 
         return response()->json([
             'success' => true,

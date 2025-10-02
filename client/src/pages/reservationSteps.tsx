@@ -13,15 +13,18 @@ import {
   Clock,
   ArrowLeft,
   ArrowRight,
-  Building,
 } from "lucide-react";
 import { format } from "date-fns";
+import { fr } from "date-fns/locale"; // Import French locale
 import { toast } from "sonner";
 import DoctorCard from "@/components/shared/DoctorCard";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { actCreateReservation } from "@/store/reservations/reservationsSlice";
+import { actCreateReservation, actGetAvailableSlots } from "@/store/reservations/reservationsSlice";
 import type { Speciality } from "@/types/speciality";
 import type { Cabinet } from "@/types/cabinet";
+import { useParams } from "react-router-dom";
+import { actGetCabinetDetails } from "@/store/cabinets/act/actGetCabinetDetails";
+import { clearSelectedCabinet } from "@/store/cabinets/cabinetsSlice";
 
 // Types
 interface Doctor {
@@ -40,11 +43,9 @@ interface Doctor {
     id: number;
     name: string;
     icon: string;
-  };
-}
-
-interface ReservationStepsProps {
-  cabinetId: number;
+    description?: string;
+    is_active?: boolean;
+  } | null;
 }
 
 // Step titles
@@ -134,56 +135,62 @@ function ConfirmationModal({
   );
 }
 
-export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
+export default function ReservationSteps() {
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedCabinet, setSelectedCabinet] = useState<Cabinet | null>(null);
+  const { selectedCabinet, loading, error } = useAppSelector((state) => state.cabinets);
+  const { availableSlots, slotsLoading, slotsError } = useAppSelector((state) => state.reservations);
   const [selectedSpeciality, setSelectedSpeciality] = useState<Speciality | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [formData, setFormData] = useState({ firstName: "", lastName: "", reason: "" });
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-
+  const { id } = useParams<{ id: string }>();
+  const cabinetId = id ? Number(id) : NaN;
   const dispatch = useAppDispatch();
-  const { searchResults: cabinets } = useAppSelector((state) => state.cabinets);
 
-  // Set selected cabinet based on cabinetId
+  // Fetch cabinet details
   useEffect(() => {
-    const cabinet = cabinets.find((c) => c.id === cabinetId);
-    setSelectedCabinet(cabinet || null);
-  }, [cabinetId, cabinets]);
+    if (!isNaN(cabinetId)) {
+      dispatch(actGetCabinetDetails(cabinetId));
+    }
+    return () => {
+      dispatch(clearSelectedCabinet());
+    };
+  }, [dispatch, cabinetId]);
+
+  // Fetch available slots when date and doctor are selected
+  useEffect(() => {
+    if (selectedDoctor && selectedDate && currentStep === 2) {
+      const dayOfWeek = format(selectedDate, "EEEE", { locale: fr }).toLowerCase(); // Use French locale
+      if (!selectedDoctor.available_days.includes(dayOfWeek)) {
+        dispatch({ type: "reservations/resetAvailableSlots" }); // Assuming a reset action exists
+        return;
+      }
+
+      dispatch(
+        actGetAvailableSlots({
+          date: format(selectedDate, "yyyy-MM-dd"),
+          cabinet_id: cabinetId,
+          doctor_id: selectedDoctor.id,
+        })
+      )
+        .unwrap()
+        .catch((error) => {
+          toast.error(`Failed to load available slots: ${error}`, { position: "bottom-right" });
+        });
+    } else {
+      dispatch({ type: "reservations/resetAvailableSlots" }); // Reset slots if conditions not met
+    }
+  }, [selectedDoctor, selectedDate, currentStep, cabinetId, dispatch]);
 
   // Get specialties and doctors for selected cabinet
   const availableSpecialities = selectedCabinet ? selectedCabinet.specialities : [];
   const availableDoctors = selectedSpeciality && selectedCabinet
     ? selectedCabinet.doctors.filter(
-        (doctor: Doctor) => doctor.speciality.id === selectedSpeciality.id && doctor.is_active
+        (doctor: Doctor) => doctor.speciality?.id === selectedSpeciality.id && doctor.is_active
       )
     : [];
-
-  // Fetch available slots when date and doctor are selected
-  useEffect(() => {
-    if (selectedDoctor && selectedDate && currentStep === 2) {
-      setSlotsLoading(true);
-      // Simulate API call for available slots
-      setTimeout(() => {
-        const startTime = parseInt(selectedDoctor.start_time.split(":")[0]) || 9;
-        const endTime = parseInt(selectedDoctor.end_time.split(":")[0]) || 17;
-        const slots = [];
-        for (let hour = startTime; hour < endTime; hour++) {
-          for (let minute = 0; minute < 60; minute += 30) {
-            const timeString = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
-            slots.push(timeString);
-          }
-        }
-        const mockAvailable = slots.filter(() => Math.random() > 0.3); // 70% availability
-        setAvailableSlots(mockAvailable);
-        setSlotsLoading(false);
-      }, 1000);
-    }
-  }, [selectedDoctor, selectedDate, currentStep]);
 
   const handleNext = () => {
     if (currentStep < stepTitles.length - 1) {
@@ -212,9 +219,11 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
     setSelectedTime(null);
   };
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setSelectedTime(null);
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+      setSelectedTime(null);
+    }
   };
 
   const handleTimeSelect = (time: string) => {
@@ -261,16 +270,13 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
 
   const progress = ((currentStep + 1) / stepTitles.length) * 100;
 
-  // Handle case when no cabinet is found
-  if (!selectedCabinet) {
-    return (
-      <div className="min-h-screen py-4">
-        <div className="min-w-full px-4 mx-auto text-center text-gray-500">
-          <Building className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <p>No cabinet found with ID {cabinetId}</p>
-        </div>
-      </div>
-    );
+  // Conditional rendering after all hooks are called
+  if (loading === "pending") {
+    return <div className="py-8 text-center">Loading cabinet details...</div>;
+  }
+
+  if (error || !selectedCabinet) {
+    return <div className="py-8 text-center text-red-600">Error loading cabinet details or no cabinet selected.</div>;
   }
 
   return (
@@ -312,7 +318,6 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
                 {/* Step 0: Select Specialty */}
                 {currentStep === 0 && (
                   <div className="w-full max-w-6xl space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{selectedCabinet.name}</h3>
                     {availableSpecialities.length > 0 ? (
                       availableSpecialities.map((speciality) => (
                         <div
@@ -364,7 +369,7 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
                           >
                             <DoctorCard
                               doctor={doctor}
-                              specialty={doctor.speciality.name}
+                              specialty={doctor.speciality?.name || "Unknown Specialty"}
                               onReserve={() => handleDoctorSelect(doctor)}
                             />
                           </div>
@@ -389,11 +394,15 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
                           mode="single"
                           numberOfMonths={2}
                           selected={selectedDate || undefined}
-                          onSelect={(date) => date && handleDateSelect(date)}
+                          onSelect={handleDateSelect}
                           className="w-full max-w-3xl mt-4 bg-white border rounded-lg shadow-sm"
                           disabled={(date) =>
                             date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                            !selectedDoctor.available_days.includes(format(date, "EEEE"))
+                            (selectedDoctor
+                              ? !selectedDoctor.available_days.includes(
+                                  format(date, "EEEE", { locale: fr }).toLowerCase()
+                                )
+                              : true)
                           }
                         />
                       </div>
@@ -406,10 +415,14 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
                         </h3>
                         {selectedDate ? (
                           <div className="space-y-4">
-                            {slotsLoading ? (
+                            {slotsLoading === "pending" ? (
                               <div className="flex items-center justify-center py-8">
                                 <div className="w-6 h-6 mr-3 border-2 border-gray-300 rounded-full border-t-primary animate-spin" />
                                 <span className="text-gray-600">Loading available times...</span>
+                              </div>
+                            ) : slotsError ? (
+                              <div className="p-4 text-center border border-red-200 rounded-lg bg-red-50">
+                                <p className="text-sm text-red-600">{slotsError}</p>
                               </div>
                             ) : availableSlots.length > 0 ? (
                               <div className="grid grid-cols-4 gap-4">
@@ -419,24 +432,39 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
                                     <button
                                       key={time}
                                       onClick={() => handleTimeSelect(time)}
-                                      disabled={!availableSlots.includes(time)}
-                                      className={`p-3 text-sm font-medium rounded-lg border transition-all duration-200 ${
+                                      className={`
+                                        relative px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200
+                                        ${
+                                          isSelected
+                                            ? "bg-blue-100 border-blue-300 text-blue-800 shadow-sm"
+                                            : "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 hover:border-green-300 cursor-pointer"
+                                        }
+                                        ${!isSelected ? "hover:shadow-sm" : ""}
+                                      `}
+                                      title={
                                         isSelected
-                                          ? "bg-primary text-primary-foreground border-primary shadow-md"
-                                          : availableSlots.includes(time)
-                                          ? "bg-white border-gray-200 text-gray-700 hover:border-primary hover:bg-primary/5"
-                                          : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
-                                      }`}
+                                          ? "Currently selected time"
+                                          : "Click to select this time slot"
+                                      }
                                     >
-                                      {time}
+                                      <span className="block">{time}</span>
+                                      {isSelected && (
+                                        <div className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full -top-1 -right-1"></div>
+                                      )}
                                     </button>
                                   );
                                 })}
                               </div>
                             ) : (
-                              <div className="py-8 text-center text-gray-500">
-                                <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                                <p>No available time slots for this date</p>
+                              <div className="p-6 text-center border border-yellow-200 rounded-lg bg-yellow-50">
+                                <Clock className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
+                                <p className="mb-1 text-sm font-medium text-yellow-800">No Available Slots</p>
+                                <p className="text-xs text-yellow-700">
+                                  Please try selecting a different date or check back later.
+                                </p>
+                                <p className="mt-2 text-xs text-gray-600">
+                                  Doctor's working hours: {selectedDoctor.start_time} - {selectedDoctor.end_time}
+                                </p>
                               </div>
                             )}
                           </div>
@@ -578,4 +606,4 @@ export default function ReservationSteps({ cabinetId }: ReservationStepsProps) {
       </div>
     </div>
   );
-}
+} 
