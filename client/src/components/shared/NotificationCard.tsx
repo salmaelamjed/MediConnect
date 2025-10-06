@@ -10,6 +10,7 @@ interface NotificationCardProps {
   onMarkAsRead?: (id: number) => void;
 }
 
+
 export const NotificationCard = ({
   notification,
   onAccept,
@@ -24,7 +25,7 @@ export const NotificationCard = ({
     }
   };
 
-
+   const role=localStorage.getItem('role');
   const getTypeIcon = (type: string) => {
     if (type.includes("appointment")) return Calendar;
     return Bell;
@@ -76,7 +77,7 @@ export const NotificationCard = ({
           </p>
 
           {notification.type === "appointment_confirmation" &&
-            !notification.is_read && (
+            !notification.is_read && role==='doctor' && (
               <div className="flex gap-2 mt-3">
                 <Button
                   variant="outline"

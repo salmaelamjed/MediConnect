@@ -11,7 +11,6 @@ export interface Notification {
     | "appointment_rescheduled"
     | "doctor_message"
     | "system_update"
-    | "payment_reminder"
     | "review_request";
   send_email: boolean;
   send_push: boolean;

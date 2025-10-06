@@ -26,7 +26,6 @@ return new class extends Migration
                 'appointment_rescheduled',
                 'doctor_message',
                 'system_update',
-                'payment_reminder',
                 'review_request'
             ]);
 

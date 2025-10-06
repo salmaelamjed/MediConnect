@@ -5,10 +5,10 @@ import type { NotificationResponse } from "@/types/notification";
 
 export const actGetNotifications = createAsyncThunk(
   "notifications/actGetNotifications",
-  async (_, { rejectWithValue }) => {
+  async (params: { page: number }, { rejectWithValue }) => {
     try {
       const response = await axios.get<NotificationResponse>(
-        `http://localhost:8000/api/notifications`,
+        `http://localhost:8000/api/notifications?page=${params.page}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("accessToken")}`,

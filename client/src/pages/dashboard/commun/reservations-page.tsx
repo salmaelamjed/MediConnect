@@ -442,7 +442,7 @@ const ReservationsPage = () => {
             </Table>
           </div>
 
-          <Pagination className="mt-4">
+        {pagination && pagination.last_page > 1 &&(<Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
@@ -489,7 +489,8 @@ const ReservationsPage = () => {
                 />
               </PaginationItem>
             </PaginationContent>
-          </Pagination>
+          </Pagination>)}
+          
         </>
 
       <Sheet open={openSheet} onOpenChange={setOpenSheet}>
