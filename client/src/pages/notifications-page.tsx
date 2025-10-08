@@ -46,6 +46,7 @@ import { actMarkAllNotificationsAsRead } from "@/store/notifications/act/actMark
 import { actMarkNotificationAsRead } from "@/store/notifications/act/actMarkNotificationAsRead"
 import { actGetNotifications } from "@/store/notifications/act/actGetNotifications"
 import { useNavigate } from "react-router-dom"
+import { EmptyNotifications } from "@/components/shared/EmptyNotifications"
 
 const NotificationsPage = () => {
   const [searchQuery, setSearchQuery] = useState("")
@@ -282,11 +283,7 @@ const NotificationsPage = () => {
               ) : filteredNotifications.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="py-20 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-muted">
-                      <Bell className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <h3 className="mb-1 text-base font-medium">No notifications</h3>
-                    <p className="text-sm text-muted-foreground">You're all caught up!</p>
+                    <EmptyNotifications/>
                   </TableCell>
                 </TableRow>
               ) : (
