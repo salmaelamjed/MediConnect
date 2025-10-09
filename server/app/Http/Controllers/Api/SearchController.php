@@ -263,4 +263,4 @@ class SearchController extends Controller
             'error' => config('app.debug') ? $e->getMessage() : null,
         ], 500);
     }
-}
+}                          
