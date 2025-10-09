@@ -56,10 +56,13 @@ const NotificationsPage = () => {
   const { notifications, loading, pagination } = useAppSelector((state) => state.notifications)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    dispatch(actGetNotifications({ page }))
-  }, [dispatch, page])
+  const token=localStorage.getItem("accessToken");
+useEffect(() => {
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    dispatch(actGetNotifications({ page }));
+  }
+}, [dispatch, page, token]);
 
   const formatTime = (dateString: string | null) => {
     if (!dateString) return "Unknown time"

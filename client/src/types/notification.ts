@@ -1,3 +1,5 @@
+import type { PaginationInfo } from "./pagination";
+
 export interface Notification {
   id: number;
   user_id: number;
@@ -23,24 +25,40 @@ export interface Notification {
   } | null;
   priority: "low" | "normal" | "high" | "urgent";
   scheduled_for: string | null;
-  data: any | null;
+  data: any | null; // Using 'any' since the structure is not specified
   action_url: string | null;
   created_at: string;
   updated_at: string;
+  reservation?: {
+    id: number;
+    patient_id: number;
+    doctor_id: number;
+    cabinet_id: number;
+    reservation_date: string;
+    reservation_time: string;
+    reason: string;
+
+    status: string;
+    patient: {
+      id: number;
+      user_id: number;
+      date_of_birth: string;
+      gender: string;
+      user: {
+        id: number;
+        email: string;
+        role: string;
+      };
+    };
+  } | null;
 }
 
 export interface NotificationResponse {
   success: boolean;
   data: Notification[];
   message?: string;
-  meta: {
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-  };
+  meta: PaginationInfo;
 }
-
 export interface MarkNotificationResponse {
   success: boolean;
   message: string;

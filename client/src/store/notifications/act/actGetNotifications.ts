@@ -5,13 +5,18 @@ import type { NotificationResponse } from "@/types/notification";
 
 export const actGetNotifications = createAsyncThunk(
   "notifications/actGetNotifications",
-  async (params: { page: number }, { rejectWithValue }) => {
+  async (params: { page?: number } = { page: 1 }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        return rejectWithValue("No authentication token found. Please log in.");
+      }
+
       const response = await axios.get<NotificationResponse>(
-        `http://localhost:8000/api/notifications?page=${params.page}`,
+        `http://localhost:8000/api/notifications?page=${params.page || 1}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

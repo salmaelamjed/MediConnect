@@ -1,5 +1,4 @@
 import { createSlice } from "@reduxjs/toolkit";
-
 import type {
   Notification,
   MarkNotificationResponse,
@@ -67,6 +66,9 @@ const notificationsSlice = createSlice({
         state.error = isString(action.payload)
           ? action.payload
           : "Failed to fetch notifications";
+        if (state.notifications.length === 0) {
+          state.notifications = []; // Reset if no prior data
+        }
       })
       // Mark Single Notification as Read
       .addCase(actMarkNotificationAsRead.pending, (state) => {
@@ -85,6 +87,7 @@ const notificationsSlice = createSlice({
                   ...notif,
                   is_read: true,
                   read_at: updatedNotification.read_at,
+                  reservation: notif.reservation, // Preserve reservation data
                 }
               : notif
           );

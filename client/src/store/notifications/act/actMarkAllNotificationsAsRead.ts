@@ -3,12 +3,6 @@ import axios from "axios";
 import { isaxiosErrorHandler } from "@/Util";
 import type { NotificationResponse } from "@/types/notification";
 
-export interface MarkNotificationResponse {
-  success: boolean;
-  message: string;
-  data: Notification;
-}
-
 export const actMarkAllNotificationsAsRead = createAsyncThunk(
   "notifications/actMarkAllNotificationsAsRead",
   async (_, { rejectWithValue }) => {

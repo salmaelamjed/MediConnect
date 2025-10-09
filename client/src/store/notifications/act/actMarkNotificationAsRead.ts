@@ -1,7 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import { isaxiosErrorHandler } from "@/Util";
-import type { MarkNotificationResponse } from "./actMarkAllNotificationsAsRead";
+import type { MarkNotificationResponse } from "@/types/notification";
 
 export const actMarkNotificationAsRead = createAsyncThunk(
   "notifications/actMarkNotificationAsRead",

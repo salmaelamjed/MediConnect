@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 class NotificationController extends Controller
 {
     /**
-     * Get all notifications for the authenticated user.
+     * Get all notifications for the authenticated user with reservation and patient info.
      *
      * @param Request $request
      * @return JsonResponse
@@ -19,8 +19,28 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
-        
+
         $query = Notification::where('user_id', $user->id)
+            ->with([
+                'reservation' => function ($query) {
+                    $query->select(
+                        'id',
+                        'patient_id',
+                        'doctor_id',
+                        'cabinet_id',
+                        'reservation_date',
+                        'reservation_time',
+                        'status',
+                        'reason',
+                    );
+                },
+                'reservation.patient' => function ($query) {
+                    $query->select('id', 'user_id', 'date_of_birth', 'gender');
+                },
+                'reservation.patient.user' => function ($query) {
+                    $query->select('id', 'email', 'role');
+                }
+            ])
             ->orderBy('created_at', 'desc');
 
         // Optional filtering by type

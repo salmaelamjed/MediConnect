@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, ChevronsUpDownIcon, Heart, Baby, Layers, Loader2, Circle } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, Heart, Baby, Layers, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
@@ -97,9 +97,6 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
               disabled={disabled || loading === "pending"}
             >
               <span className="flex items-center">
-                {loading === "pending" && (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                )}
                 {value && formattedSpecialties.length > 0 ? (
                   (() => {
                     const selected = formattedSpecialties.find((s) => s.id === value);

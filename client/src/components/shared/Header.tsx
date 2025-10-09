@@ -40,11 +40,11 @@ const Header = () => {
   const navigate = useNavigate()
 
   // Fetch notifications on mount if logged in
-  useEffect(() => {
-    if (token) {
-      dispatch(actGetNotifications())
-    }
-  }, [dispatch, token])
+ useEffect(() => {
+  if (token) {
+    dispatch(actGetNotifications({ page: 1 }));
+  }
+}, [dispatch, token]);
 
   // Get unread notifications count
   const unreadCount = notifications.filter(n => !n.is_read).length

@@ -36,17 +36,18 @@ export function DashboardHeader({ toggleSidebar }: DashboardHeaderProps) {
   const navigate = useNavigate()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  
+  const token=localStorage.getItem("accessToken")
   // Get notifications from Redux store
   const { notifications, loading } = useAppSelector((state) => state.notifications)
   
   const role = localStorage.getItem("role")
   const isCabinetOwner = JSON.parse(localStorage.getItem("is_cabinet_owner") || "false")
 
-  // Fetch notifications on mount
-  useEffect(() => {
-    dispatch(actGetNotifications())
-  }, [dispatch])
+useEffect(() => {
+  if (token) {
+    dispatch(actGetNotifications({ page: 1 }));
+  }
+}, [dispatch, token]);
 
   const getDashboardLink = () => {
     if (role === "admin") return "/admin"
