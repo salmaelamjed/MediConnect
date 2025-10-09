@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\SpecialityController;
 use App\Http\Controllers\Api\CabinetSearchController;
 use App\Http\Controllers\Api\ReservationController;
-
+use App\Http\Controllers\Api\SearchController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -46,7 +46,8 @@ Route::get('/cabinets', [CabinetController::class, 'allCabinets'])->name('cabine
 Route::get('/cabinets/name/{name}', [CabinetController::class, 'getCabinetByName'])->name('cabinets.byName');
 Route::get('/cabinets/address/{address}', [CabinetController::class, 'getCabinetByAdress'])->name('cabinets.byAddress');
 
-// routes/api.php
+// search routes
+Route::get('/search', [SearchController::class, 'search']);
 Route::prefix('search')->group(function () {
     Route::get('/cabinets', action: [CabinetSearchController::class, 'search']);
     Route::get('/cabinets/location', [CabinetSearchController::class, 'searchByLocation']);

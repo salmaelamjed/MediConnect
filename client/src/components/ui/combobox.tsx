@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { CheckIcon, ChevronsUpDownIcon, Heart, Baby, Layers, Loader2, Circle } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { useEffect } from 'react';
+import * as React from "react";
+import { CheckIcon, ChevronsUpDownIcon, Heart, Baby, Layers, Loader2, Circle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
 import {
   Command,
   CommandEmpty,
@@ -12,42 +12,37 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { useAppSelector, useAppDispatch } from "@/store/hooks"
-import { actGetAllActive } from "@/store/specialities/act/actGetAllActive"
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { actGetAllActive } from "@/store/specialities/act/actGetAllActive";
 
 interface Specialty {
-  id: number
-  value: string
-  label: string
-  icon: string
+  id: number;
+  value: string;
+  label: string;
+  icon: string;
 }
 
 interface ComboboxProps {
-  value?: string
-  onValueChange?: (value: string) => void
-  placeholder?: string
-  className?: string
-  disabled?: boolean
-  error?: boolean
+  value?: number | undefined; // Changed to number | undefined
+  onValueChange?: (value: string, id?: number) => void; // Updated to include id
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  error?: boolean;
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   heart: Heart,
-  child: Baby, // Map "child" to Baby icon for Pediatrics
-  skin: Layers, // Placeholder for Dermatology; consider a custom icon
-  // Add more mappings as needed
-}
+  child: Baby,
+  skin: Layers,
+};
 
 export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
   (
     {
-      value = "",
+      value,
       onValueChange,
       placeholder = "Select specialty...",
       className,
@@ -56,20 +51,20 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
     },
     ref
   ) => {
-    const [open, setOpen] = React.useState(false)
+    const [open, setOpen] = React.useState(false);
     const { records: specialties, loading, error: reduxError } = useAppSelector(
       (state) => state.specialities
-    )
+    );
 
-    const dispatch = useAppDispatch()
+    const dispatch = useAppDispatch();
 
     useEffect(() => {
-      dispatch(actGetAllActive())
-    }, [dispatch])
+      dispatch(actGetAllActive());
+    }, [dispatch]);
 
-    // Vérification de sécurité : s'assurer que specialties est un tableau
-    const safeSpecialties = Array.isArray(specialties) ? specialties : []
-    
+    // Ensure specialties is an array
+    const safeSpecialties = Array.isArray(specialties) ? specialties : [];
+
     // Map specialties to include value, label, and icon
     const formattedSpecialties: Specialty[] = React.useMemo(
       () =>
@@ -80,8 +75,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
           icon: specialty.icon,
         })),
       [safeSpecialties]
-    )
-
+    );
 
     return (
       <div className="relative">
@@ -108,17 +102,17 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                 )}
                 {value && formattedSpecialties.length > 0 ? (
                   (() => {
-                    const selected = formattedSpecialties.find((s) => s.value === value)
+                    const selected = formattedSpecialties.find((s) => s.id === value);
                     if (selected) {
-                      const Icon = iconMap[selected.icon] || Circle // Fallback to Circle
+                      const Icon = iconMap[selected.icon] || Circle;
                       return (
                         <>
                           <Icon className="w-4 h-4 mr-2" />
                           {selected.label}
                         </>
-                      )
+                      );
                     }
-                    return placeholder
+                    return placeholder;
                   })()
                 ) : (
                   placeholder
@@ -129,10 +123,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
           </PopoverTrigger>
           <PopoverContent className="w-full p-0" align="start">
             <Command>
-              <CommandInput
-                placeholder="Search specialty..."
-                aria-label="Search specialty"
-              />
+              <CommandInput placeholder="Search specialty..." aria-label="Search specialty" />
               <CommandList>
                 <CommandEmpty>
                   {loading === "pending"
@@ -143,39 +134,37 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                 </CommandEmpty>
                 <CommandGroup>
                   {formattedSpecialties.map((specialty) => {
-                    const Icon = iconMap[specialty.icon] || Circle // Fallback to Circle
+                    const Icon = iconMap[specialty.icon] || Circle;
                     return (
                       <CommandItem
                         key={specialty.id}
-                        value={specialty.label.toLowerCase()} // Case-insensitive search
+                        value={specialty.label.toLowerCase()}
                         onSelect={() => {
-                          onValueChange?.(specialty.value)
-                          setOpen(false)
+                          onValueChange?.(specialty.label, specialty.id); // Pass label and id
+                          setOpen(false);
                         }}
-                        aria-selected={value === specialty.value}
+                        aria-selected={value === specialty.id}
                       >
                         <CheckIcon
                           className={cn(
                             "mr-2 h-4 w-4",
-                            value === specialty.value ? "opacity-100" : "opacity-0"
+                            value === specialty.id ? "opacity-100" : "opacity-0"
                           )}
                         />
                         <Icon className="w-4 h-4 mr-2" />
                         {specialty.label}
                       </CommandItem>
-                    )
+                    );
                   })}
                 </CommandGroup>
               </CommandList>
             </Command>
           </PopoverContent>
         </Popover>
-        {reduxError && (
-          <p className="mt-1 text-xs text-red-600">{reduxError}</p>
-        )}
+        {reduxError && <p className="mt-1 text-xs text-red-600">{reduxError}</p>}
       </div>
-    )
+    );
   }
-)
+);
 
-Combobox.displayName = "Combobox"
+Combobox.displayName = "Combobox";

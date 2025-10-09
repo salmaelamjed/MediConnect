@@ -58,15 +58,23 @@ class Doctor extends Model
      */
     public function speciality(): BelongsTo
     {
-        return $this->belongsTo(Speciality::class,'speciality_id');
+        return $this->belongsTo(Speciality::class, 'speciality_id');
     }
 
     /**
-     * Relation avec le cabinet (optionnelle)
+     * Relation avec le cabinet
      */
     public function cabinet(): BelongsTo
     {
         return $this->belongsTo(Cabinet::class);
+    }
+
+    /**
+     * Relation avec les horaires (schedules)
+     */
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class);
     }
 
     /**

@@ -7,13 +7,13 @@ import {
   LucideMapPinned,
   MapIcon,
   Mail,
+  User,
 } from "lucide-react"
 import type React from "react"
 import { Button } from "@/components/ui/button"
 import { useAppDispatch, useAppSelector } from "@/store/hooks"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useEffect, useState, useCallback, useRef, useMemo } from "react"
-import { actSearch } from "@/store/cabinets/act/actSearch"
 import type { Cabinet } from "@/types/cabinet"
 import { debounce } from "lodash"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
@@ -27,6 +27,8 @@ import { Label } from "@/components/ui/label"
 import { Calendar28 } from "@/components/shared/Calendar28"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Combobox } from "@/components/ui/combobox"
+import { clearSearchResults } from "@/store/cabinets/cabinetsSlice"
+import { actSearchCabinet } from "@/store/search/act/actSearchCabinet"
 
 // Fix for Leaflet default marker icons
 interface IconDefault extends L.Icon {
@@ -56,25 +58,6 @@ interface CopyConfirmationModalProps {
   onClose: () => void
   onConfirm: () => void
   coordinates: string
-}
-
-export interface Doctor {
-  id: number
-  user_id?: number
-  cabinet_id?: number
-  name: string
-  license_number: string
-  bio: string
-  consultation_fees: string
-  start_time: string
-  end_time: string
-  available_days: string[]
-  is_active: boolean
-  speciality: {
-    id: number
-    name: string
-    icon: string
-  }
 }
 
 function CopyConfirmationModal({ isOpen, onClose, onConfirm, coordinates }: CopyConfirmationModalProps) {
@@ -181,6 +164,8 @@ export default function SearchResults() {
   const initialSearchTerm = searchParams.get("q") || ""
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm)
   const [appliedSearchTerm, setAppliedSearchTerm] = useState(initialSearchTerm)
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined)
+  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<number | undefined>(undefined)
   const [hoveredCabinetId, setHoveredCabinetId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedCoordinates, setSelectedCoordinates] = useState<string>("")
@@ -190,44 +175,44 @@ export default function SearchResults() {
   const markerRefs = useRef<{ [key: string]: LeafletMarker }>({})
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
-  const { searchResults, loading } = useAppSelector((state) => state.cabinets)
+  const { searchResults, loading, error } = useAppSelector((state) => state.search)
 
-  // Debounced search function for suggestions
+  // Debounced search function
   const debouncedSearch = useCallback(
     (term: string) => {
       if (term.trim() && term.length >= 2) {
-        dispatch(actSearch(term))
+        dispatch(actSearchCabinet({ searchTerm: term, date: selectedDate, specialtyId: selectedSpecialtyId }))
           .unwrap()
-          .catch((error) => {
-            toast.error("Failed to fetch suggestions.")
-            console.log(error)
+          .catch((err:any) => {
+            toast.error(err || "Failed to fetch suggestions.")
+            console.error(err)
           })
       } else {
-        dispatch({ type: "cabinets/clearSearchResults" })
+        dispatch(clearSearchResults())
       }
     },
-    [dispatch],
+    [dispatch, selectedDate, selectedSpecialtyId],
   )
 
   const debouncedSearchHandler = useMemo(() => debounce(debouncedSearch, 300), [debouncedSearch])
 
-  // Trigger search for results on appliedSearchTerm change
+  // Trigger search ONLY when Search button is clicked (appliedSearchTerm changes)
   useEffect(() => {
     if (appliedSearchTerm && appliedSearchTerm.length >= 2) {
-      dispatch(actSearch(appliedSearchTerm))
+      dispatch(actSearchCabinet({ searchTerm: appliedSearchTerm, date: selectedDate, specialtyId: selectedSpecialtyId }))
         .unwrap()
         .then((result) => {
           console.log("Search results fetched:", result)
         })
-        .catch((error) => {
-          toast.error("Failed to fetch search results.")
-          console.log(error)
+        .catch((err) => {
+          toast.error(err || "Failed to fetch search results.")
+          console.error(err)
         })
     } else {
-      dispatch({ type: "cabinets/clearSearchResults" })
+      dispatch(clearSearchResults())
     }
     return () => debouncedSearchHandler.cancel()
-  }, [appliedSearchTerm, dispatch, debouncedSearchHandler])
+  }, [appliedSearchTerm, selectedDate, selectedSpecialtyId, dispatch, debouncedSearchHandler])
 
   // Handle initial load from URL
   useEffect(() => {
@@ -237,6 +222,13 @@ export default function SearchResults() {
     }
   }, [initialSearchTerm])
 
+  // Display errors from Redux state
+  useEffect(() => {
+    if (error) {
+      toast.error(error)
+    }
+  }, [error])
+
   // Fetch user location
   useEffect(() => {
     if (navigator.geolocation) {
@@ -245,7 +237,7 @@ export default function SearchResults() {
         (error) => {
           setUserLocation({ lat: 33.5731, lng: -7.5898 }) // Fallback to Casablanca
           toast.info("Unable to retrieve your position. Using Casablanca as default.")
-          console.log(error)
+          console.error(error)
         },
       )
     } else {
@@ -263,19 +255,26 @@ export default function SearchResults() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
-    debouncedSearchHandler(e.target.value)
+    // Removed debounced search here - only triggers on Search button click
   }
 
-  const handleSpecialtyChange = (value: string) => {
-    setSearchTerm(value)
-    setAppliedSearchTerm(value)
-    navigate(`/search?q=${encodeURIComponent(value)}`)
+  // FIXED: Only update selectedSpecialtyId, don't change searchTerm
+  const handleSpecialtyChange = (value: string, id?: number) => {
+    setSelectedSpecialtyId(id)
+    // Don't update searchTerm or appliedSearchTerm here
+    // The search will trigger when user clicks the Search button
+  }
+
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date)
+    // Don't trigger search automatically, wait for Search button click
   }
 
   const handleSearch = () => {
     if (searchTerm.trim()) {
       setAppliedSearchTerm(searchTerm)
-      navigate(`/search?q=${encodeURIComponent(searchTerm)}`)
+      // Fixed URL parameter syntax
+      navigate(`/search?q=${encodeURIComponent(searchTerm)}&date=${encodeURIComponent(selectedDate||"")}&speciality=${encodeURIComponent(selectedSpecialtyId?.toString()||"")}`)
     }
   }
 
@@ -345,7 +344,7 @@ export default function SearchResults() {
               <div className="relative">
                 <InputGroup>
                   <InputGroupInput
-                    placeholder="Search..."
+                    placeholder="Search by city..."
                     className="h-12 border-gray-300 focus:border-blue-600 focus:ring-blue-600"
                     value={searchTerm}
                     onChange={handleInputChange}
@@ -358,16 +357,16 @@ export default function SearchResults() {
             </div>
 
             <div className="md:col-span-3" ref={searchContainerRef}>
-              <Label className="block mb-2 text-sm font-semibold text-gray-700">What?</Label>
+              <Label className="block mb-2 text-sm font-semibold text-gray-700">When?</Label>
               <div className="relative">
-                <Calendar28 />
+                <Calendar28 onDateSelect={handleDateChange} />
               </div>
             </div>
             <div className="md:col-span-3" ref={searchContainerRef}>
               <Label className="block mb-2 text-sm font-semibold text-gray-700">Service?</Label>
               <div className="relative">
                 <Combobox
-                  value={searchTerm}
+                  value={selectedSpecialtyId}
                   onValueChange={handleSpecialtyChange}
                   className="h-12 border-gray-300 focus:border-blue-600 focus:ring-blue-600"
                 />
@@ -398,7 +397,7 @@ export default function SearchResults() {
                   <Loader className="w-8 h-8 text-blue-600 animate-spin" />
                 </div>
               ) : searchResults.length === 0 && loading === "succeeded" ? (
-                <div className="py-12 text-center text-gray-500">
+                <div className="justify-center py-12 text-center text-gray-500">
                   <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <p className="mb-2 text-xl font-semibold">No results found</p>
                   <p>Try modifying your search terms</p>
@@ -436,36 +435,56 @@ export default function SearchResults() {
                                   <h3 className="mb-1 text-xl font-bold text-blue-900 cursor-pointer hover:text-blue-700">
                                     {cabinet.name || "Unnamed Clinic"}
                                   </h3>
-                                   <div className="flex items-center gap-2 mb-1 text-sm text-gray-600">
-                            <MapIcon className="w-4 h-4 text-green-500" />
-                            <span>
-                              {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
-                            </span>
-                            <span>
-                              <LucideMapPinned className="inline-block w-4 h-4 ml-4 text-red-500" />
-                              {distance}
-                            </span>
-                          </div>
-
-                           <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Mail className="w-4 h-4 text-blue-500" />
-                              <span className="font-medium">Contact:</span>
-                              <p className="inline-block">{cabinet.email}</p>
-                            </div>
-                          </div>
-
-
+                                  <div className="flex items-center gap-2 mb-1 text-sm text-gray-600">
+                                    <MapIcon className="w-4 h-4 text-green-500" />
+                                    <span>
+                                      {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
+                                    </span>
+                                    <span>
+                                      <LucideMapPinned className="inline-block w-4 h-4 ml-4 text-red-500" />
+                                      {distance}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2 text-gray-600">
+                                      <Mail className="w-4 h-4 text-blue-500" />
+                                      <span className="font-medium">Contact:</span>
+                                      <p className="inline-block">{cabinet.email}</p>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
 
                               {/* Services */}
                               <div className="flex flex-wrap gap-2 my-3">
-                                {(cabinet.specialities || []).map((specialty: { name: string }) => (
-                              <span key={specialty.name} className="px-2 py-1 text-sm text-white rounded-full bg-primary">
-                                {specialty.name}
-                              </span>
-                            ))} 
+                                {(cabinet.specialities || []).map((specialty) => (
+                                  <span key={specialty.id} className="px-2 py-1 text-sm text-white rounded-full bg-primary">
+                                    {specialty.name}
+                                  </span>
+                                ))}
+                              </div>
+
+                              {/* Doctors */}
+                              <div className="my-3">
+                                <h4 className="text-sm font-semibold text-gray-700">Doctors</h4>
+                                <div className="mt-2 space-y-2">
+                                  {(cabinet.doctors || []).length > 0 ? (
+                                    cabinet.doctors.map((doctor) => (
+                                      <div key={doctor.id} className="flex items-start gap-2 text-sm text-gray-600">
+                                        <User className="w-4 h-4 mt-1 text-blue-600" />
+                                        <div>
+                                          <p className="font-medium">{doctor.name}</p>
+                                          <p>Specialty: {doctor.speciality?.name || "N/A"}</p>
+                                          <p>Fees: {doctor.consultation_fees || "N/A"}</p>
+                                          <p>Available: {(doctor.available_days || []).join(", ") || "N/A"}</p>
+                                        </div>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-sm text-gray-500">No doctors available</p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
 
                             {/* Bottom section with price and button */}
@@ -483,7 +502,6 @@ export default function SearchResults() {
                               </Button>
                             </div>
                           </div>
-                        </div>
                         </div>
                       </CardContent>
                     </Card>
