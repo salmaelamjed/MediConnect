@@ -1,4 +1,3 @@
-import { OverviewHeader } from "./overview-header"
 import { AppointmentsChart } from "./appointments-chart"
 import { RevenueChart } from "./revenue-chart"
 import { PatientStatsChart } from "./patient-stats-chart"
@@ -10,7 +9,6 @@ import { MetricsGrid } from "./metrics-grid.tsxmetrics-grid"
 export default function OwnerOverview() {
   return (
     <div className="min-h-screen bg-background">
-      <OverviewHeader />
 
       <main className="container px-4 py-6 mx-auto space-y-6">
         <MetricsGrid />
