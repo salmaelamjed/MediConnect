@@ -143,6 +143,7 @@ class AuthController extends Controller
         // Patient-specific validation
         if ($request->role === 'patient') {
             $rules = array_merge($rules, [
+                'name'=>'required|string|min:3|max:255',
                 'date_of_birth' => 'required|date|before:today|after:1900-01-01',
                 'gender' => 'required|in:Female,Male',
                 'address' => 'required|string|min:10|max:500',

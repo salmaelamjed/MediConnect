@@ -442,7 +442,8 @@ const ReservationsPage = () => {
             </Table>
           </div>
 
-        {pagination && pagination.last_page > 1 &&(<Pagination className="mt-4">
+        {pagination && pagination.last_page > 1 &&(
+          <Pagination className="mt-4">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious

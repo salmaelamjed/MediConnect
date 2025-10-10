@@ -4,10 +4,12 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CabinetController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\SpecialityController;
 use App\Http\Controllers\Api\CabinetSearchController;
 use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\StaffController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -126,4 +128,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Mark all notifications as read
     Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
+
+    //patients routes
+    Route::apiResource('patients', PatientController::class);
+
+    // RESTful resource routes for staff (index, store, show, update, destroy)
+    Route::apiResource('staff', StaffController::class);
+    // Custom endpoint for authenticated user's staff profile
+    Route::get('staff/me', [StaffController::class, 'me']);
 });

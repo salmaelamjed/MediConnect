@@ -30,7 +30,7 @@ const ReservationsSkeleton = () => {
               <Skeleton className="w-24 h-4 bg-gray-200" />
               <Skeleton className="w-20 h-6 bg-gray-200" />
               <div className="flex justify-end">
-                <Skeleton className="w-8 h-8 bg-gray-200" />
+                <Skeleton className="w-8 h-4 bg-gray-200" />
               </div>
             </div>
           ))}

@@ -1,24 +1,25 @@
-import {  Check, User, Mail, Lock } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Link, useNavigate } from "react-router-dom"
-import { toast } from "sonner"
-import { useForm, type SubmitHandler } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useState, useEffect } from "react"
-import { Textarea } from "@/components/ui/textarea"
-import { useAppDispatch } from "@/store/hooks"
-import { actAuthRegister } from "@/store/auth/authSlice"
-import { doctorRegisterSchema, type TFormInputs } from "@/validations/DoctorRegisterSchema"
-import { Combobox } from "../ui/combobox"
-const SignupDoctorForm = ()=> {
-  const dispatch = useAppDispatch()
-  const navigate = useNavigate()
-  const [step, setStep] = useState(1)
-  const [formLoading, setFormLoading] = useState(false)
-  const [touchedSteps, setTouchedSteps] = useState<number[]>([])
+import { Check, User, Mail, Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState, useEffect } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { useAppDispatch } from "@/store/hooks"; // Added useAppSelector
+import { actAuthRegister } from "@/store/auth/authSlice";
+import { doctorRegisterSchema, type TFormInputs } from "@/validations/DoctorRegisterSchema";
+import { Combobox } from "../ui/combobox";
+
+const SignupDoctorForm = () => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [step, setStep] = useState(1);
+  const [formLoading, setFormLoading] = useState(false);
+  const [touchedSteps, setTouchedSteps] = useState<number[]>([]);
 
   const {
     register,
@@ -55,22 +56,22 @@ const SignupDoctorForm = ()=> {
       end_time: "",
       available_days: [],
     },
-  })
+  });
 
-  const cabinetWorkingDays = watch("cabinet_working_days")
-  const availableDays = watch("available_days")
+  const cabinetWorkingDays = watch("cabinet_working_days");
+  const availableDays = watch("available_days");
 
   useEffect(() => {
     if (!touchedSteps.includes(step)) {
-      const currentFields = getCurrentStepFields()
-      currentFields.forEach((field) => clearErrors(field))
+      const currentFields = getCurrentStepFields();
+      currentFields.forEach((field) => clearErrors(field));
     }
-  }, [step, touchedSteps, clearErrors])
+  }, [step, touchedSteps, clearErrors]);
 
   const getCurrentStepFields = (): (keyof TFormInputs)[] => {
     switch (step) {
       case 1:
-        return ["name", "email", "password", "password_confirmation"]
+        return ["name", "email", "password", "password_confirmation"];
       case 2:
         return [
           "cabinet_name",
@@ -81,7 +82,7 @@ const SignupDoctorForm = ()=> {
           "cabinet_opening_time",
           "cabinet_closing_time",
           "cabinet_working_days",
-        ]
+        ];
       case 3:
         return [
           "speciality",
@@ -91,22 +92,22 @@ const SignupDoctorForm = ()=> {
           "start_time",
           "end_time",
           "available_days",
-        ]
+        ];
       default:
-        return []
+        return [];
     }
-  }
+  };
 
   const shouldShowError = (fieldName: keyof TFormInputs) => {
-    return errors[fieldName] && (touchedFields[fieldName] || touchedSteps.includes(step))
-  }
+    return errors[fieldName] && (touchedFields[fieldName] || touchedSteps.includes(step));
+  };
 
-  const getMaxStep = () => 3
-  const isFinalStep = () => step === 3
+  const getMaxStep = () => 3;
+  const isFinalStep = () => step === 3;
 
   const onSubmit: SubmitHandler<TFormInputs> = async (data: TFormInputs) => {
     try {
-      setFormLoading(true)
+      setFormLoading(true);
       const payload: any = {
         email: data.email,
         password: data.password,
@@ -129,47 +130,47 @@ const SignupDoctorForm = ()=> {
         cabinet_opening_time: data.cabinet_opening_time,
         cabinet_closing_time: data.cabinet_closing_time,
         cabinet_working_days: data.cabinet_working_days,
-      }
+      };
 
-      await dispatch(actAuthRegister(payload)).unwrap()
-      toast.success("Registration successful! Please verify your email.")
-      navigate("/email_verification")
+      await dispatch(actAuthRegister(payload)).unwrap();
+      toast.success("Registration successful! Please verify your email.");
+      navigate("/email_verification");
     } catch (error: any) {
-      console.error("Registration failed:", error)
-      toast.error(error.message || "Registration failed. Please try again.")
+      console.error("Registration failed:", error);
+      toast.error(error.message || "Registration failed. Please try again.");
     } finally {
-      setFormLoading(false)
+      setFormLoading(false);
     }
-  }
+  };
 
   const handleNext = async () => {
-    setTouchedSteps((prev) => [...new Set([...prev, step])])
-    const currentFields = getCurrentStepFields()
-    const isCurrentStepValid = await trigger(currentFields)
+    setTouchedSteps((prev) => [...new Set([...prev, step])]);
+    const currentFields = getCurrentStepFields();
+    const isCurrentStepValid = await trigger(currentFields);
     if (isCurrentStepValid) {
-      setStep(step + 1)
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      setStep(step + 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }
+  };
 
   const handlePrevious = () => {
     if (step > 1) {
-      setStep(step - 1)
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      setStep(step - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }
+  };
 
   const stepTitles = [
     "Account Details",
     "Cabinet Information",
     "Professional Information",
-  ]
+  ];
   const stepDescriptions = [
     "Create your MediConnect Doctor Account",
     "Provide your cabinet details",
     "Complete your professional information",
-  ]
-  const availableDaysList = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+  ];
+  const availableDaysList = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -327,17 +328,17 @@ const SignupDoctorForm = ()=> {
                     <Label htmlFor="cabinet_working_days" className="text-sm font-medium text-gray-700">Cabinet Working Days</Label>
                     <div className="flex flex-wrap gap-2">
                       {availableDaysList.map((day) => {
-                        const isSelected = cabinetWorkingDays?.includes(day) || false
+                        const isSelected = cabinetWorkingDays?.includes(day) || false;
                         return (
                           <button
                             key={day}
                             type="button"
                             onClick={() => {
-                              const currentDays = cabinetWorkingDays || []
+                              const currentDays = cabinetWorkingDays || [];
                               if (isSelected) {
-                                setValue("cabinet_working_days", currentDays.filter((d) => d !== day))
+                                setValue("cabinet_working_days", currentDays.filter((d) => d !== day));
                               } else {
-                                setValue("cabinet_working_days", [...currentDays, day])
+                                setValue("cabinet_working_days", [...currentDays, day]);
                               }
                             }}
                             className={cn(
@@ -349,7 +350,7 @@ const SignupDoctorForm = ()=> {
                           >
                             {isSelected ? <Check className="w-4 h-4" /> : day}
                           </button>
-                        )
+                        );
                       })}
                     </div>
                     {shouldShowError("cabinet_working_days") && <p className="mt-1 text-xs text-red-600">{errors.cabinet_working_days?.message}</p>}
@@ -361,8 +362,11 @@ const SignupDoctorForm = ()=> {
                   <div className="space-y-2">
                     <Label htmlFor="speciality" className="text-sm font-medium text-gray-700">Medical Specialty</Label>
                     <Combobox
-                      value={watch("speciality")}
-                      onValueChange={(value) => setValue("speciality", value)}
+                      value={parseInt(watch("speciality")) || undefined} // Convert string to number for Combobox
+                      onValueChange={(label, id) => {
+                        setValue("speciality", id?.toString() || ""); // Set the id as a string
+                        if (id) clearErrors("speciality"); // Clear errors when a valid id is selected
+                      }}
                       placeholder="Select your medical specialty"
                       className={cn(shouldShowError("speciality") && "border-red-500 focus:ring-red-500")}
                     />
@@ -426,17 +430,17 @@ const SignupDoctorForm = ()=> {
                     <Label htmlFor="available_days" className="text-sm font-medium text-gray-700">Doctor Working Days</Label>
                     <div className="flex flex-wrap gap-2">
                       {availableDaysList.map((day) => {
-                        const isSelected = availableDays?.includes(day) || false
+                        const isSelected = availableDays?.includes(day) || false;
                         return (
                           <button
                             key={day}
                             type="button"
                             onClick={() => {
-                              const currentDays = availableDays || []
+                              const currentDays = availableDays || [];
                               if (isSelected) {
-                                setValue("available_days", currentDays.filter((d) => d !== day))
+                                setValue("available_days", currentDays.filter((d) => d !== day));
                               } else {
-                                setValue("available_days", [...currentDays, day])
+                                setValue("available_days", [...currentDays, day]);
                               }
                             }}
                             className={cn(
@@ -448,7 +452,7 @@ const SignupDoctorForm = ()=> {
                           >
                             {isSelected ? <Check className="w-4 h-4" /> : day}
                           </button>
-                        )
+                        );
                       })}
                     </div>
                     {shouldShowError("available_days") && <p className="mt-1 text-xs text-red-600">{errors.available_days?.message}</p>}
@@ -521,8 +525,8 @@ const SignupDoctorForm = ()=> {
           className="absolute inset-0 object-cover w-full h-full rounded-xl"
         />
       </div>
-      
     </div>
-  )
-}
-export default SignupDoctorForm
+  );
+};
+
+export default SignupDoctorForm;
