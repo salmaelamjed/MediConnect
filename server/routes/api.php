@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\CabinetController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PasswordResetController;
 use App\Http\Controllers\Api\PatientController;
+use App\Http\Controllers\Api\PlanningController;
+use App\Http\Controllers\Api\SchedulesController;
 use App\Http\Controllers\Api\SpecialityController;
 use App\Http\Controllers\Api\CabinetSearchController;
 use App\Http\Controllers\Api\ReservationController;
@@ -136,4 +138,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('staff', StaffController::class);
     // Custom endpoint for authenticated user's staff profile
     Route::get('staff/me', [StaffController::class, 'me']);
+
+    //Schedules routes
+Route::get('/schedules',[PlanningController::class,'getDoctorPlanning']);
+Route::get('/debug-planning',[PlanningController::class, 'debugPlanning']);
 });
