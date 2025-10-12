@@ -48,6 +48,14 @@ const patientsSlice = createSlice({
   name: "patients",
   initialState,
   reducers: {
+    setPatient: (state, action: PayloadAction<Patient>) => {
+      state.patients.unshift(action.payload); // Add new patient to the start of the array
+      state.pagination.total += 1; // Increment total count
+      state.pagination.to = Math.min(
+        state.pagination.to + 1,
+        state.pagination.total
+      );
+    },
     clearError(state) {
       state.error = null;
     },
@@ -177,7 +185,7 @@ const patientsSlice = createSlice({
 });
 
 // Export actions
-export const { clearError } = patientsSlice.actions;
+export const { clearError,setPatient } = patientsSlice.actions;
 
 // Export reducer
 export default patientsSlice.reducer;

@@ -13,6 +13,37 @@ use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
+
+        /**
+     * Generate a simple password with at least 1 uppercase letter, 1 number, and 1 special character.
+     *
+     * @return string
+     */
+    private function generateSimplePassword(): string
+    {
+        $lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $numbers = '0123456789';
+        $specialChars = '@#$%';
+
+        // Ensure at least one of each required type
+        $password = [
+            $uppercase[random_int(0, strlen($uppercase) - 1)], // 1 uppercase
+            $numbers[random_int(0, strlen($numbers) - 1)],     // 1 number
+            $specialChars[random_int(0, strlen($specialChars) - 1)], // 1 special char
+        ];
+
+        // Fill the rest with lowercase letters for simplicity (7-9 more characters)
+        $length = random_int(7, 9);
+        for ($i = 0; $i < $length; $i++) {
+            $password[] = $lowercase[random_int(0, strlen($lowercase) - 1)];
+        }
+
+        // Shuffle the password array and combine into a string
+        shuffle($password);
+        return implode('', $password);
+    }
+
     /**
      * Display a listing of the patients.
      *
@@ -38,7 +69,7 @@ class PatientController extends Controller
         }
 
         // Paginate results
-        $patients = $query->paginate($request->input('per_page', 15));
+        $patients = $query->paginate($request->input('per_page', 10));
 
         // Transform response to match TypeScript PaginationInfo interface
         return response()->json([
@@ -54,20 +85,17 @@ class PatientController extends Controller
         ], 200);
     }
 
-    /**
-     * Store a newly created patient in storage.
-     * Creates a related User (role: patient) if not provided.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function store(Request $request)
+   /**
+ * Store a newly created patient in storage.
+ * Creates a related User (role: patient) with an auto-generated password sent via email/SMS.
+ *
+ * @param  \Illuminate\Http\Request  $request
+ * @return \Illuminate\Http\JsonResponse
+ */
+  public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            // User fields (optional user_id or create new user)
-            'user_id' => ['nullable', 'exists:users,id', Rule::unique('patients')->ignore(null)],
             'email' => ['required_if:user_id,null', 'email', 'unique:users,email', 'max:255'],
-            'password' => ['required_if:user_id,null', 'string', 'min:8', 'confirmed'],
             'name' => ['sometimes', 'string', 'max:255'], // Optional override for user name
 
             // Patient-specific fields
@@ -98,13 +126,25 @@ class PatientController extends Controller
                     $user->save();
                 }
             } else {
+                // Generate a simple password
+                $generatedPassword = $this->generateSimplePassword();
+
                 $user = User::create([
                     'email' => $request->email,
-                    'password' => Hash::make($request->password),
+                    'password' => Hash::make($generatedPassword),
                     'role' => 'patient',
-                    'name' => $request->input('name', $request->name),
+                    'name' => $request->input('name', $request->email),
                     'is_active' => true,
                 ]);
+
+                // Send password via email
+                try {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                        new \App\Mail\WelcomePasswordMail($generatedPassword, $user->name)
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Email sending failed: ' . $e->getMessage());
+                }
             }
 
             $patient = Patient::create([
@@ -125,7 +165,7 @@ class PatientController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $patient,
-                'message' => 'Patient created successfully.',
+                'message' => 'Patient created successfully. Password has been sent to the patient\'s email' . ($request->filled('phone_number') ? ' and SMS.' : '.'),
             ], 201);
         });
     }
