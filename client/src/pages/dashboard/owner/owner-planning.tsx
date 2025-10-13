@@ -232,7 +232,6 @@ export default function OwnerPlanning() {
 
   const appointments = planningData?.planning ? convertSlotsToAppointments(planningData.planning) : []
 
-  console.log("Converted appointments:", appointments)
 
   const getAppointmentForSlot = (day: string, time: string) => {
     return appointments.find((apt) => apt.date === day && apt.startTime === time)

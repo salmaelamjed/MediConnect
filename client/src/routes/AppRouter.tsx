@@ -23,7 +23,6 @@ const Calendar = lazy(() => import("@/pages/dashboard/doctor/Calendar"));
 const ConsultationsPage = lazy(() => import("@/pages/dashboard/doctor/consultations-page"));
 const PatientsManagement = lazy(() => import("@/pages/dashboard/doctor/management-patient"));
 const DoctorOverView = lazy(() => import("@/pages/dashboard/doctor/overview-page"));
-const PlanningPage = lazy(() => import("@/pages/dashboard/doctor/planning-page"));
 const ReportsPage = lazy(() => import("@/pages/dashboard/doctor/reports-page"));
 const Settings = lazy(() => import("@/pages/dashboard/doctor/settings"));
 const WaitingRoom = lazy(() => import("@/pages/dashboard/doctor/waiting-room"));
@@ -123,7 +122,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <DoctorOverView /> },
           { path: "patients", element:<PatientsManagement/> },
-          { path: "planning", element: <PlanningPage /> },
+          { path: "planning", element: <OwnerPlanning /> },
           {path:"reservations",element:<ReservationsPage/>},
           { path: "consultations", element: <ConsultationsPage /> },
           { path: "waiting_room", element: <WaitingRoom/> },
