@@ -13,8 +13,7 @@ use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
-
-        /**
+    /**
      * Generate a simple password with at least 1 uppercase letter, 1 number, and 1 special character.
      *
      * @return string
@@ -45,22 +44,43 @@ class PatientController extends Controller
     }
 
     /**
-     * Display a listing of the patients.
+     * Display a listing of the patients who have made appointments in the authenticated owner's cabinet
+     * with statuses other than 'pending' or 'canceled'.
      *
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
-        // Build query with optional filters
-        $query = Patient::with('user')->latest();
+        // Get the authenticated user
+        $user = $request->user();
 
-        // Search by name or email (from related user)
+        // Ensure the user is an owner (has a cabinet)
+        $cabinet = $user->ownedCabinet;
+        if (!$cabinet) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: User does not own a cabinet.',
+            ], 403);
+        }
+
+        // Build query to fetch patients with reservations in the owner's cabinet
+        $query = Patient::with('user')
+            ->whereHas('reservations', function ($q) use ($cabinet) {
+                $q->where('cabinet_id', $cabinet->id)
+                  ->whereNotIn('status', ['pending', 'cancelled']);
+            })
+            ->latest();
+
+        // Search by name or email (from related user or patient)
         if ($request->has('search')) {
             $search = $request->input('search');
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            })->orWhere('name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                })->orWhere('name', 'like', "%{$search}%");
+            });
         }
 
         // Filter by gender
@@ -85,20 +105,18 @@ class PatientController extends Controller
         ], 200);
     }
 
-   /**
- * Store a newly created patient in storage.
- * Creates a related User (role: patient) with an auto-generated password sent via email/SMS.
- *
- * @param  \Illuminate\Http\Request  $request
- * @return \Illuminate\Http\JsonResponse
- */
-  public function store(Request $request)
+    /**
+     * Store a newly created patient in storage.
+     * Creates a related User (role: patient) with an auto-generated password sent via email/SMS.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email' => ['required_if:user_id,null', 'email', 'unique:users,email', 'max:255'],
             'name' => ['sometimes', 'string', 'max:255'], // Optional override for user name
-
-            // Patient-specific fields
             'profile' => ['nullable', 'string', 'max:255'],
             'date_of_birth' => ['required', 'date', 'before:today'],
             'gender' => ['required', 'in:Female,Male'],
@@ -235,22 +253,31 @@ class PatientController extends Controller
         }
 
         return DB::transaction(function () use ($request, $patient) {
-            if ($request->hasAny(['email', 'password', 'name'])) {
-                $userData = [
-                    'email' => $request->email,
-                    'name' => $request->input('name', $patient->name),
-                ];
-                if ($request->filled('password')) {
-                    $userData['password'] = Hash::make($request->password);
-                }
-                $patient->user->update($userData);
-            }
-
+            // Update Patient model
             $patient->update($request->only([
                 'profile', 'date_of_birth', 'gender', 'address', 'city',
                 'code_postal', 'medical_history', 'allergies', 'name'
             ]));
 
+            // Update related User model if email, name, or password is provided
+            $user = $patient->user;
+            $userUpdates = [];
+
+            if ($request->filled('email')) {
+                $userUpdates['email'] = $request->email;
+            }
+            if ($request->filled('name')) {
+                $userUpdates['name'] = $request->name;
+            }
+            if ($request->filled('password')) {
+                $userUpdates['password'] = Hash::make($request->password);
+            }
+
+            if (!empty($userUpdates)) {
+                $user->update($userUpdates);
+            }
+
+            // Reload the user relationship to ensure fresh data
             $patient->load('user');
 
             return response()->json([

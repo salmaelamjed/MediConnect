@@ -22,7 +22,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { actCreateReservation, actGetAvailableSlots } from "@/store/reservations/reservationsSlice";
 import type { Speciality } from "@/types/speciality";
 import type { Cabinet } from "@/types/cabinet";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { actGetCabinetDetails } from "@/store/cabinets/act/actGetCabinetDetails";
 import { clearSelectedCabinet } from "@/store/cabinets/cabinetsSlice";
 
@@ -148,7 +148,7 @@ export default function ReservationSteps() {
   const { id } = useParams<{ id: string }>();
   const cabinetId = id ? Number(id) : NaN;
   const dispatch = useAppDispatch();
-
+  const navigate=useNavigate();
   // Fetch cabinet details
   useEffect(() => {
     if (!isNaN(cabinetId)) {
@@ -238,7 +238,8 @@ export default function ReservationSteps() {
   const handleConfirmReservation = async (reservationData: FormData) => {
     try {
       await dispatch(actCreateReservation(reservationData)).unwrap();
-      toast.success("Reservation confirmed successfully!", { position: "bottom-right" });
+      navigate(`/cabinets/${cabinetId}`)
+      toast.success("Reservation confirmed successfully!", { position: "top-right" });
 
       // Reset form
       setCurrentStep(0);

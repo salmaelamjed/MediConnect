@@ -48,9 +48,9 @@ class User extends Authenticatable
     /**
      * Relation avec les cabinets possédés par cet utilisateur
      */
-    public function ownedCabinets()
+ public function ownedCabinet()
     {
-        return $this->hasMany(Cabinet::class, 'owner_id');
+        return $this->hasOne(Cabinet::class, 'owner_id');
     }
 
     /**
