@@ -287,7 +287,7 @@ public function allCabinetsActive(): JsonResponse
     }
 
 
-    /**
+/**
  * Récupérer les détails complets d'un cabinet par ID
  *
  * @param int $id
@@ -338,7 +338,8 @@ public function show(int $id): JsonResponse
             'cabinets.created_at',
             'cabinets.updated_at',
             'doctors.name as owner_name',
-            'users.email as owner_email'
+            'users.email as owner_email',
+            'users.profile_image as owner_profile_image'
         )
         ->where('cabinets.id', $id)
         ->leftJoin('users', 'cabinets.owner_id', '=', 'users.id')
@@ -360,9 +361,10 @@ public function show(int $id): JsonResponse
                     'doctors.end_time',
                     'doctors.available_days',
                     'doctors.is_active',
-                    'doctors.speciality_id' // Include speciality_id for debugging
+                    'doctors.speciality_id',
+                    'users.profile_image as doctor_profile_image' // Added profile_image for doctors
                 )
-                ->whereNotNull('doctors.speciality_id') // Exclude doctors with null speciality_id
+                ->leftJoin('users', 'doctors.user_id', '=', 'users.id')
                 ->with([
                     'speciality' => function ($query) {
                         $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
@@ -381,13 +383,6 @@ public function show(int $id): JsonResponse
             ], 404);
         }
 
-        // Traiter les images détaillées
-        if (is_string($cabinet->detail_images)) {
-            $cabinet->detail_images = json_decode($cabinet->detail_images, true) ?? [];
-        } else if (is_null($cabinet->detail_images)) {
-            $cabinet->detail_images = [];
-        }
-
         // Transformer les specialities
         $cabinet->specialities = $cabinet->specialities->map(function ($speciality) {
             return [
@@ -396,11 +391,11 @@ public function show(int $id): JsonResponse
                 'description' => $speciality->description,
                 'icon' => $speciality->icon,
                 'is_active' => $speciality->is_active,
-                'pivot' => $speciality->pivot // Include pivot data if needed
+                'pivot' => $speciality->pivot
             ];
         })->toArray();
 
-        // Transformer les doctors pour inclure la spécialité
+        // Transformer les doctors pour inclure la spécialité et profile_image
         $cabinet->doctors = $cabinet->doctors->map(function ($doctor) {
             return [
                 'id' => $doctor->id,
@@ -414,6 +409,8 @@ public function show(int $id): JsonResponse
                 'end_time' => $doctor->end_time,
                 'available_days' => $doctor->available_days,
                 'is_active' => $doctor->is_active,
+                'speciality_id' => $doctor->speciality_id,
+                'profile_image' => $doctor->doctor_profile_image, // Added profile_image
                 'speciality' => $doctor->speciality ? [
                     'id' => $doctor->speciality->id,
                     'name' => $doctor->speciality->name,
@@ -425,31 +422,33 @@ public function show(int $id): JsonResponse
         })->toArray();
 
         // Log pour débogage
-        Log::info('Cabinet details retrieved', ['cabinet_id' => $id, 'doctors' => $cabinet->doctors]);
+        Log::info('Cabinet details retrieved', [
+            'cabinet_id' => $id,
+            'detail_images' => $cabinet->detail_images,
+            'doctors' => $cabinet->doctors,
+            'specialities' => $cabinet->specialities,
+            'owner_profile_image' => $cabinet->owner_profile_image
+        ]);
 
         return response()->json([
             'success' => true,
             'data' => $cabinet,
             'message' => 'Détails du cabinet récupérés avec succès'
         ], 200);
-
     } catch (QueryException $e) {
         Log::error('Erreur de base de données dans show: ' . $e->getMessage(), [
             'sql' => $e->getSql(),
             'bindings' => $e->getBindings()
         ]);
-
         return response()->json([
             'success' => false,
             'message' => 'Erreur lors de la récupération des détails du cabinet',
             'error' => 'Erreur de base de données: ' . $e->getMessage()
         ], 500);
-
     } catch (\Exception $e) {
         Log::error('Erreur inattendue dans show: ' . $e->getMessage(), [
             'trace' => $e->getTraceAsString()
         ]);
-
         return response()->json([
             'success' => false,
             'message' => 'Une erreur inattendue s\'est produite',

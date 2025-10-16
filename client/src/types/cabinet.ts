@@ -4,7 +4,7 @@ export interface Cabinet {
   name: string;
   description: string | null;
   image: string;
-  detail_images : string[];
+  detail_images: string[];
   address: string;
   city: string;
   postal_code: string;
@@ -32,6 +32,7 @@ export interface Cabinet {
     start_time: string;
     end_time: string;
     available_days: string[];
+    doctor_profile_image:string;
     is_active: boolean;
     speciality: { id: number; name: string; icon: string };
   }>;

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('image')->nullable();
-            $table->string('detail_images')->nullable();
+            $table->json('detail_images')->nullable()->change();
             $table->string('address');
             $table->string('city');
             $table->string('postal_code');

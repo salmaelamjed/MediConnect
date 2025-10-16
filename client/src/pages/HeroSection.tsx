@@ -168,9 +168,9 @@ export default function HeroSection() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <h2 className="flex font-bold text-gray-900 truncate transition-colors duration-200 group-hover:text-blue-700">
+                          <h6 className="flex font-bold text-gray-900 truncate transition-colors duration-200 group-hover:text-blue-700">
                             {suggestion.name}
-                          </h2>
+                          </h6>
                           <div className="flex items-center mt-1 text-sm text-gray-600">
                             <svg className="w-4 h-4 mr-1 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
                               <path

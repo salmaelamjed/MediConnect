@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon, ChevronsUpDownIcon, Heart, Baby, Layers, Circle } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
@@ -16,6 +16,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { actGetAllActive } from "@/store/specialities/act/actGetAllActive";
+import { MedicalIcon } from "@/components/ui/medical-icon";
 
 interface Specialty {
   id: number;
@@ -25,19 +26,13 @@ interface Specialty {
 }
 
 interface ComboboxProps {
-  value?: number | undefined; // Changed to number | undefined
-  onValueChange?: (value: string, id?: number) => void; // Updated to include id
+  value?: number | undefined;
+  onValueChange?: (value: string, id?: number) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
   error?: boolean;
 }
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  heart: Heart,
-  child: Baby,
-  skin: Layers,
-};
 
 export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
   (
@@ -62,10 +57,8 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
       dispatch(actGetAllActive());
     }, [dispatch]);
 
-    // Ensure specialties is an array
     const safeSpecialties = Array.isArray(specialties) ? specialties : [];
 
-    // Map specialties to include value, label, and icon
     const formattedSpecialties: Specialty[] = React.useMemo(
       () =>
         safeSpecialties.map((specialty) => ({
@@ -75,6 +68,11 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
           icon: specialty.icon,
         })),
       [safeSpecialties]
+    );
+
+    const selectedSpecialty = React.useMemo(
+      () => formattedSpecialties.find((s) => s.id === value),
+      [formattedSpecialties, value]
     );
 
     return (
@@ -96,21 +94,16 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
               )}
               disabled={disabled || loading === "pending"}
             >
-              <span className="flex items-center">
-                {value && formattedSpecialties.length > 0 ? (
-                  (() => {
-                    const selected = formattedSpecialties.find((s) => s.id === value);
-                    if (selected) {
-                      const Icon = iconMap[selected.icon] || Circle;
-                      return (
-                        <>
-                          <Icon className="w-4 h-4 mr-2" />
-                          {selected.label}
-                        </>
-                      );
-                    }
-                    return placeholder;
-                  })()
+              <span className="flex items-center gap-2">
+                {selectedSpecialty ? (
+                  <>
+                    <MedicalIcon
+                      name={selectedSpecialty.icon}
+                      className="text-blue-500"
+                      size={16}
+                    />
+                    <span>{selectedSpecialty.label}</span>
+                  </>
                 ) : (
                   placeholder
                 )}
@@ -130,29 +123,31 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                     : "No specialty found."}
                 </CommandEmpty>
                 <CommandGroup>
-                  {formattedSpecialties.map((specialty) => {
-                    const Icon = iconMap[specialty.icon] || Circle;
-                    return (
-                      <CommandItem
-                        key={specialty.id}
-                        value={specialty.label.toLowerCase()}
-                        onSelect={() => {
-                          onValueChange?.(specialty.label, specialty.id); // Pass label and id
-                          setOpen(false);
-                        }}
-                        aria-selected={value === specialty.id}
-                      >
-                        <CheckIcon
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === specialty.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <Icon className="w-4 h-4 mr-2" />
-                        {specialty.label}
-                      </CommandItem>
-                    );
-                  })}
+                  {formattedSpecialties.map((specialty) => (
+                    <CommandItem
+                      key={specialty.id}
+                      value={specialty.label.toLowerCase()}
+                      onSelect={() => {
+                        onValueChange?.(specialty.label, specialty.id);
+                        setOpen(false);
+                      }}
+                      aria-selected={value === specialty.id}
+                      className="flex items-center gap-2"
+                    >
+                      <CheckIcon
+                        className={cn(
+                          "h-4 w-4",
+                          value === specialty.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <MedicalIcon
+                        name={specialty.icon}
+                        className="text-blue-500"
+                        size={16}
+                      />
+                      <span>{specialty.label}</span>
+                    </CommandItem>
+                  ))}
                 </CommandGroup>
               </CommandList>
             </Command>
