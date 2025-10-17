@@ -1,10 +1,10 @@
 import ClinicDetails from "@/components/shared/clinic-details";
+import Loader from "@/components/ui/Loader";
 import ReservationsPage from "@/pages/dashboard/commun/reservations-page";
 import NotificationDetails from "@/pages/notifications-details-page";
 import NotificationsPage from "@/pages/notifications-page";
 import ReservationSteps from "@/pages/reservationSteps";
 import SearchResults from "@/pages/search-results";
-import { StethoscopeIcon } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
@@ -47,34 +47,19 @@ const EmailVerificationModal = lazy(() => import("@/components/forms/email-verif
 const StaffList = lazy(() => import("@/pages/dashboard/doctor/staff-list"));
 const OurServices = lazy(() => import("@/pages/our-services"));
 // Custom Loading component
-const Loading = () => (
-  <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="relative">
-        {/* Medical logo with loading animation */}
-        <div className="relative w-20 h-20">
-          {/* Rotating ring around logo */}
-          <div className="absolute inset-0 border-4 border-transparent rounded-full border-t-blue-400 animate-spin"></div>
 
-          {/* Medical logo in center */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <StethoscopeIcon className="w-10 h-10 text-primary animate-pulse" />
-          </div>
-        </div>
-      </div>
-    </div>
-);
 
 const router = createBrowserRouter([
   // Public routes (DefaultLayout)
   {
     path: "/",
     element: (
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen "><Loader /></div>}>
         <DefaultLayout />
       </Suspense>
     ),
     errorElement: (
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen "><Loader /></div>}>
         <NotFound />
       </Suspense>
     ),
@@ -101,13 +86,13 @@ const router = createBrowserRouter([
     path: "/doctor",
     element: (
       // <ProtectedRoute>
-        <Suspense fallback={<Loading />}>
+        <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
           <AdminLayout />
         </Suspense>
       //</ProtectedRoute>
     ),
     errorElement: (
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
         <NotFound />
       </Suspense>
     ),
@@ -115,7 +100,7 @@ const router = createBrowserRouter([
       {
         path: "",
         element: (
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
              <DoctorDashboard /> 
           </Suspense>
         ),
@@ -142,13 +127,13 @@ const router = createBrowserRouter([
     path: "/admin",
     element: (
       // <ProtectedRoute>
-        <Suspense fallback={<Loading />}>
+        <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
           <AdminLayout />
         </Suspense>
       //</ProtectedRoute>
     ),
     errorElement: (
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
         <NotFound />
       </Suspense>
     ),
@@ -156,7 +141,7 @@ const router = createBrowserRouter([
       {
         path: "",
         element: (
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
              <AdminDashboard /> 
           </Suspense>
         ),
@@ -179,13 +164,13 @@ const router = createBrowserRouter([
     path: "/owner",
     element: (
       // <ProtectedRoute>
-        <Suspense fallback={<Loading />}>
+        <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
           <OwnerLayout />
         </Suspense>
       //</ProtectedRoute>
     ),
     errorElement: (
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
         <NotFound />
       </Suspense>
     ),
@@ -193,7 +178,7 @@ const router = createBrowserRouter([
       {
         path: "",
         element: (
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<div className="flex items-center justify-center w-full min-h-screen bg-gray-50"><Loader /></div>}>
              <OwnerDashboard /> 
           </Suspense>
         ),
@@ -227,10 +212,10 @@ const router = createBrowserRouter([
 
 const AppRouter = () => {
   return (
-    <Suspense fallback={<Loading />}>
+    <Suspense fallback={<Loader />}>
       <RouterProvider router={router} />
     </Suspense>
   );
 };
 
-export { AppRouter, Loading };
+export { AppRouter };

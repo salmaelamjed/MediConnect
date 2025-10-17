@@ -362,7 +362,7 @@ public function show(int $id): JsonResponse
                     'doctors.available_days',
                     'doctors.is_active',
                     'doctors.speciality_id',
-                    'users.profile_image as doctor_profile_image' // Added profile_image for doctors
+                    'users.profile_image as doctor_profile_image'
                 )
                 ->leftJoin('users', 'doctors.user_id', '=', 'users.id')
                 ->with([
@@ -383,7 +383,150 @@ public function show(int $id): JsonResponse
             ], 404);
         }
 
-        // Transformer les specialities
+        // Récupérer les cabinets à proximité (dans un rayon de 10km)
+        $nearbyRadius = 10; // Rayon en kilomètres
+        $nearbyClinics = Cabinet::select(
+            'cabinets.id',
+            'cabinets.owner_id',
+            'cabinets.name',
+            'cabinets.description',
+            'cabinets.image',
+            'cabinets.detail_images',
+            'cabinets.address',
+            'cabinets.city',
+            'cabinets.postal_code',
+            'cabinets.email',
+            'cabinets.opening_time',
+            'cabinets.closing_time',
+            'cabinets.working_days',
+            'cabinets.latitude',
+            'cabinets.longitude',
+            'cabinets.is_active',
+            'cabinets.created_at',
+            'cabinets.updated_at',
+            'doctors.name as owner_name',
+            'users.email as owner_email',
+            'users.profile_image as owner_profile_image'
+        )
+        ->where('cabinets.id', '!=', $id) // Exclure le cabinet actuel
+        ->whereNotNull('cabinets.latitude')
+        ->whereNotNull('cabinets.longitude')
+        ->where('cabinets.is_active', true) // Explicitly qualify is_active
+        ->leftJoin('users', 'cabinets.owner_id', '=', 'users.id')
+        ->leftJoin('doctors', 'users.id', '=', 'doctors.user_id')
+        ->with([
+            'specialities' => function ($query) {
+                $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
+            },
+            'doctors' => function ($query) {
+                $query->select(
+                    'doctors.id',
+                    'doctors.user_id',
+                    'doctors.cabinet_id',
+                    'doctors.name',
+                    'doctors.license_number',
+                    'doctors.bio',
+                    'doctors.consultation_fees',
+                    'doctors.start_time',
+                    'doctors.end_time',
+                    'doctors.available_days',
+                    'doctors.is_active',
+                    'doctors.speciality_id',
+                    'users.profile_image as doctor_profile_image'
+                )
+                ->leftJoin('users', 'doctors.user_id', '=', 'users.id')
+                ->with([
+                    'speciality' => function ($query) {
+                        $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
+                    }
+                ]);
+            }
+        ])
+        ->get()
+        ->filter(function ($clinic) use ($cabinet, $nearbyRadius) {
+            // Calcul de la distance avec la formule Haversine
+            $earthRadius = 6371; // Rayon de la Terre en km
+            $latFrom = deg2rad($cabinet->latitude);
+            $lonFrom = deg2rad($cabinet->longitude);
+            $latTo = deg2rad($clinic->latitude);
+            $lonTo = deg2rad($clinic->longitude);
+
+            $latDelta = $latTo - $latFrom;
+            $lonDelta = $lonTo - $lonFrom;
+
+            $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) +
+                cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
+            $distance = $angle * $earthRadius;
+
+            return $distance <= $nearbyRadius;
+        })
+        ->map(function ($clinic) {
+            // Transformer les specialities pour nearby clinics
+            $clinic->specialities = $clinic->specialities->map(function ($speciality) {
+                return [
+                    'id' => $speciality->id,
+                    'name' => $speciality->name,
+                    'description' => $speciality->description,
+                    'icon' => $speciality->icon,
+                    'is_active' => $speciality->is_active,
+                    'pivot' => $speciality->pivot
+                ];
+            })->toArray();
+
+            // Transformer les doctors pour nearby clinics
+            $clinic->doctors = $clinic->doctors->map(function ($doctor) {
+                return [
+                    'id' => $doctor->id,
+                    'user_id' => $doctor->user_id,
+                    'cabinet_id' => $doctor->cabinet_id,
+                    'name' => $doctor->name,
+                    'license_number' => $doctor->license_number,
+                    'bio' => $doctor->bio,
+                    'consultation_fees' => $doctor->consultation_fees,
+                    'start_time' => $doctor->start_time,
+                    'end_time' => $doctor->end_time,
+                    'available_days' => $doctor->available_days,
+                    'is_active' => $doctor->is_active,
+                    'speciality_id' => $doctor->speciality_id,
+                    'profile_image' => $doctor->doctor_profile_image,
+                    'speciality' => $doctor->speciality ? [
+                        'id' => $doctor->speciality->id,
+                        'name' => $doctor->speciality->name,
+                        'description' => $doctor->speciality->description,
+                        'icon' => $doctor->speciality->icon,
+                        'is_active' => $doctor->speciality->is_active
+                    ] : null
+                ];
+            })->toArray();
+
+            return [
+                'id' => $clinic->id,
+                'owner_id' => $clinic->owner_id,
+                'name' => $clinic->name,
+                'description' => $clinic->description,
+                'image' => $clinic->image,
+                'detail_images' => $clinic->detail_images,
+                'address' => $clinic->address,
+                'city' => $clinic->city,
+                'postal_code' => $clinic->postal_code,
+                'email' => $clinic->email,
+                'opening_time' => $clinic->opening_time,
+                'closing_time' => $clinic->closing_time,
+                'working_days' => $clinic->working_days,
+                'latitude' => $clinic->latitude,
+                'longitude' => $clinic->longitude,
+                'is_active' => $clinic->is_active,
+                'created_at' => $clinic->created_at,
+                'updated_at' => $clinic->updated_at,
+                'owner_name' => $clinic->owner_name,
+                'owner_email' => $clinic->owner_email,
+                'owner_profile_image' => $clinic->owner_profile_image,
+                'specialities' => $clinic->specialities,
+                'doctors' => $clinic->doctors
+            ];
+        })->values()->toArray();
+
+        // Transformer les specialities du cabinet principal
         $cabinet->specialities = $cabinet->specialities->map(function ($speciality) {
             return [
                 'id' => $speciality->id,
@@ -395,7 +538,7 @@ public function show(int $id): JsonResponse
             ];
         })->toArray();
 
-        // Transformer les doctors pour inclure la spécialité et profile_image
+        // Transformer les doctors du cabinet principal
         $cabinet->doctors = $cabinet->doctors->map(function ($doctor) {
             return [
                 'id' => $doctor->id,
@@ -410,7 +553,7 @@ public function show(int $id): JsonResponse
                 'available_days' => $doctor->available_days,
                 'is_active' => $doctor->is_active,
                 'speciality_id' => $doctor->speciality_id,
-                'profile_image' => $doctor->doctor_profile_image, // Added profile_image
+                'profile_image' => $doctor->doctor_profile_image,
                 'speciality' => $doctor->speciality ? [
                     'id' => $doctor->speciality->id,
                     'name' => $doctor->speciality->name,
@@ -421,19 +564,48 @@ public function show(int $id): JsonResponse
             ];
         })->toArray();
 
+        // Préparer les données de réponse
+        $responseData = [
+            'id' => $cabinet->id,
+            'owner_id' => $cabinet->owner_id,
+            'name' => $cabinet->name,
+            'description' => $cabinet->description,
+            'image' => $cabinet->image,
+            'detail_images' => $cabinet->detail_images,
+            'address' => $cabinet->address,
+            'city' => $cabinet->city,
+            'postal_code' => $cabinet->postal_code,
+            'email' => $cabinet->email,
+            'opening_time' => $cabinet->opening_time,
+            'closing_time' => $cabinet->closing_time,
+            'working_days' => $cabinet->working_days,
+            'latitude' => $cabinet->latitude,
+            'longitude' => $cabinet->longitude,
+            'is_active' => $cabinet->is_active,
+            'created_at' => $cabinet->created_at,
+            'updated_at' => $cabinet->updated_at,
+            'owner_name' => $cabinet->owner_name,
+            'owner_email' => $cabinet->owner_email,
+            'owner_profile_image' => $cabinet->owner_profile_image,
+            'specialities' => $cabinet->specialities,
+            'doctors' => $cabinet->doctors,
+            'nearby_clinics' => $nearbyClinics
+        ];
+
         // Log pour débogage
         Log::info('Cabinet details retrieved', [
             'cabinet_id' => $id,
             'detail_images' => $cabinet->detail_images,
             'doctors' => $cabinet->doctors,
             'specialities' => $cabinet->specialities,
-            'owner_profile_image' => $cabinet->owner_profile_image
+            'owner_profile_image' => $cabinet->owner_profile_image,
+            'nearby_clinics' => $nearbyClinics
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $cabinet,
-            'message' => 'Détails du cabinet récupérés avec succès'
+            'data' => $responseData,
+            'message' => 'Détails du cabinet et cabinets à proximité récupérés avec succès'
         ], 200);
     } catch (QueryException $e) {
         Log::error('Erreur de base de données dans show: ' . $e->getMessage(), [

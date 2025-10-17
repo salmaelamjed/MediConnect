@@ -23,7 +23,7 @@ export const SpecialtyCard: React.FC<SpecialtyCardProps> = ({
     <div
       onClick={() => onClick?.(id)}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-xl hover:border-blue-200",
+        "group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-sm hover:border-blue-200",
         onClick && "cursor-pointer",
         className
       )}
