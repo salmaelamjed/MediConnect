@@ -628,7 +628,7 @@ public function show(int $id): JsonResponse
         ], 500);
     }
 }
-    /**
+    /** 
      * Récupérer un cabinet par adresse
      *
      * @param Request $request

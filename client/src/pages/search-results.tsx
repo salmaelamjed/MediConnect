@@ -8,7 +8,6 @@ import {
   Users,
   Star,
   EqualApproximately,
-  Loader,
 } from "lucide-react"
 import type React from "react"
 import { Button } from "@/components/ui/button"
@@ -29,7 +28,7 @@ import { Combobox } from "@/components/ui/combobox"
 import { clearSearchResults } from "@/store/cabinets/cabinetsSlice"
 import { actSearchCabinet } from "@/store/search/act/actSearchCabinet"
 import { Input } from "@/components/ui/input"
-
+import Loader from "@/components/ui/Loader"
 // Fix for Leaflet default marker icons
 interface IconDefault extends L.Icon {
   _getIconUrl?: () => string
@@ -336,13 +335,11 @@ export default function SearchResults() {
 
       <section className="container w-full px-4 py-6 mx-auto" aria-live="polite">
         {loading === "pending" ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader className="w-12 h-12 text-blue-600 animate-spin" />
-            <p className="mt-4 text-lg font-semibold text-gray-700">Searching for clinics...</p>
-            <p className="mt-2 text-sm text-gray-500">Please wait while we fetch the results.</p>
+          <div className="flex flex-col items-center justify-center ">
+           <Loader/>
           </div>
         ) : searchResults.length === 0 && loading === "succeeded" ? (
-          <Card className="flex flex-col items-center justify-center py-12 text-center border border-gray-200 rounded-lg shadow-sm">
+          <Card className="flex flex-col items-center justify-center text-center border-none shadow-none">
             <CardContent>
               <Search className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <h3 className="mb-2 text-xl font-semibold text-gray-900">No Results Found</h3>
@@ -363,108 +360,108 @@ export default function SearchResults() {
             {/* Main Content - Results */}
             <div className="lg:col-span-7">
               <div className="space-y-4">
-                {searchResults.map((cabinet) => {
-                  const distance = getDistance(cabinet, userLocation)
-                  return (
-                    <Card
-                      key={cabinet.id}
-                      className="overflow-hidden transition-all duration-300 border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue-300"
-                      onMouseEnter={() => setHoveredCabinetId(String(cabinet.id))}
-                      onMouseLeave={() => setHoveredCabinetId(null)}
-                    >
-                      <CardContent className="p-0">
-                        <div className="flex flex-col md:flex-row">
-                          {/* Image Section - Hauteur fixe */}
-                          <div className="relative h-58 md:w-72 md:h-full group">
-                            <div className="absolute inset-0 z-10" />
-                            <img
-                              src={cabinet.image || "/placeholder.svg?height=250&width=300&query=medical clinic"}
-                              alt={`${cabinet.name || "Clinic"} image`}
-                              className="object-cover w-full h-full"
-                            />
-                            <Badge className="absolute px-2 py-1 text-xs font-bold text-white bg-orange-500 border-0 top-3 left-3">
-                              ⭐ 5.0
-                            </Badge>
-                          </div>
+               {searchResults.map((cabinet) => {
+                    const distance = getDistance(cabinet, userLocation)
+                    return (
+                      <Card
+                        key={cabinet.id}
+                        className="overflow-hidden transition-all duration-300 border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue-300"
+                        onMouseEnter={() => setHoveredCabinetId(String(cabinet.id))}
+                        onMouseLeave={() => setHoveredCabinetId(null)}
+                      >
+                        <CardContent className="p-0">
+                          <div className="flex flex-col md:flex-row">
+                            {/* Image Section - Reduced height */}
+                            <div className="relative h-20 md:w-60 md:h-auto group">
+                              <div className="absolute inset-0 z-10" />
+                              <img
+                                src={cabinet.image || "/placeholder.svg?height=200&width=240&query=medical clinic"}
+                                alt={`${cabinet.name || "Clinic"} image`}
+                                className="object-cover w-full h-full"
+                              />
+                              <Badge className="absolute px-1.5 py-0.5 text-xs font-bold text-white bg-orange-500 border-0 top-2 left-2">
+                                ⭐ 5.0
+                              </Badge>
+                            </div>
 
-                          {/* Content Section - Scroll si nécessaire */}
-                          <div className="flex flex-col flex-1 p-4 overflow-hidden">
-                            <div className="flex-1 overflow-y-auto">
-                              {/* Header */}
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                  <h3 className="mb-1 text-lg font-bold text-gray-900 transition-colors cursor-pointer hover:text-blue-800 line-clamp-1">
-                                    {cabinet.name || "Unnamed Clinic"}
-                                  </h3>
-                                  {/* Location & Distance */}
-                                  <div className="flex flex-col gap-1 mb-2 text-gray-600">
-                                    <div className="flex items-center gap-1.5">
-                                      <MapIcon className="flex-shrink-0 w-5 h-5 text-green-600" />
-                                      <span className="text-md line-clamp-1">
-                                        {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
+                            {/* Content Section - Compact layout */}
+                            <div className="flex flex-col flex-1 p-3 overflow-hidden">
+                              <div className="flex-1">
+                                {/* Header */}
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex-1">
+                                    <h3 className="mb-1 text-base font-bold text-gray-900 transition-colors cursor-pointer hover:text-blue-800 line-clamp-1">
+                                      {cabinet.name || "Unnamed Clinic"}
+                                    </h3>
+                                    {/* Location & Distance */}
+                                    <div className="flex flex-col gap-0.5 mb-1 text-gray-600">
+                                      <div className="flex items-center gap-1">
+                                        <MapIcon className="flex-shrink-0 w-4 h-4 text-green-600" />
+                                        <span className="text-sm line-clamp-1">
+                                          {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
+                                        </span>
+                                        <EqualApproximately className="flex-shrink-0 w-2.5 h-2.5 text-primary" />
+                                        <LucideMapPinned className="flex-shrink-0 w-4 h-4 text-red-500" />
+                                        <span className="text-xs font-medium">{distance}</span>
+                                      </div>
+                                    </div>
+                                    {/* Owner */}
+                                    <div className="flex items-center gap-1 mb-1 text-gray-600">
+                                      <User className="flex-shrink-0 w-3.5 h-3.5 text-blue-500" />
+                                      <span className="text-sm font-medium">Owner:</span>
+                                      <span className="text-xs">salma</span>
+                                    </div>
+                                    {/* Contact */}
+                                    <div className="flex items-center gap-1 mb-2 text-gray-600">
+                                      <Mail className="flex-shrink-0 w-3.5 h-3.5 text-blue-500" />
+                                      <span className="text-sm font-medium">Contact:</span>
+                                      <span className="text-xs text-blue-600 cursor-pointer hover:underline line-clamp-1">
+                                        {cabinet.email}
                                       </span>
-                                      <EqualApproximately className="flex-shrink-0 w-3 h-3 text-primary" />
-                                      <LucideMapPinned className="flex-shrink-0 w-5 h-5 text-red-500" />
-                                      <span className="text-sm font-medium">{distance}</span>
                                     </div>
                                   </div>
-                                  {/* Owner */}
-                                  <div className="flex items-center gap-1.5 mb-2 text-gray-600">
-                                    <User className="flex-shrink-0 w-4 h-4 text-blue-500" />
-                                    <span className="font-medium text-md">Owner:</span>
-                                    <span className="text-sm">salma</span>
-                                  </div>
-                                  {/* Contact */}
-                                  <div className="flex items-center gap-1.5 mb-3 text-gray-600">
-                                    <Mail className="flex-shrink-0 w-4 h-4 text-blue-500" />
-                                    <span className="font-medium text-md">Contact:</span>
-                                    <span className="text-sm text-blue-600 cursor-pointer hover:underline line-clamp-1">
-                                      {cabinet.email}
-                                    </span>
+                                </div>
+                                {/* Specialties */}
+                                <div className="mb-1">
+                                  <h4 className="mb-0.5 font-semibold text-gray-700 text-sm">Specialties:</h4>
+                                  <div className="flex flex-wrap gap-1">
+                                    {(cabinet.specialities || []).slice(0, 3).map((specialty) => (
+                                      <span
+                                        key={specialty.id}
+                                        className="px-1.5 py-0.5 text-xs font-medium text-blue-700 transition-colors border border-blue-200 rounded-full bg-blue-50 hover:bg-blue-100 line-clamp-1"
+                                      >
+                                        {specialty.name}
+                                      </span>
+                                    ))}
+                                    {(cabinet.specialities || []).length > 3 && (
+                                      <span className="px-1.5 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                                        +{(cabinet.specialities || []).length - 3}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                              {/* Specialties */}
-                              <div className="mb-2">
-                                <h4 className="mb-1 font-semibold text-gray-700 text-md">Specialties :</h4>
-                                <div className="flex flex-wrap gap-1">
-                                  {(cabinet.specialities || []).slice(0, 3).map((specialty) => (
-                                    <span
-                                      key={specialty.id}
-                                      className="px-2 py-1 text-xs font-medium text-blue-700 transition-colors border border-blue-200 rounded-full bg-blue-50 hover:bg-blue-100 line-clamp-1"
-                                    >
-                                      {specialty.name}
-                                    </span>
-                                  ))}
-                                  {(cabinet.specialities || []).length > 3 && (
-                                    <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
-                                      +{(cabinet.specialities || []).length - 3}
-                                    </span>
-                                  )}
-                                </div>
+                              {/* Footer with CTA */}
+                              <div className="flex items-center justify-end mt-1">
+                                <Link
+                                  to={`/cabinets/${cabinet.id}`}
+                                  className="mr-3 text-sm font-semibold text-blue-600 transition-colors cursor-pointer hover:text-blue-800"
+                                >
+                                  View Details →
+                                </Link>
+                                <Button
+                                  className="px-4 py-2 text-sm font-semibold text-white transition-all duration-200 rounded-lg shadow-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow"
+                                  onClick={() => navigate(`/reservations/${cabinet.id}`)}
+                                >
+                                  Book Now
+                                </Button>
                               </div>
-                            </div>
-                            {/* Footer with CTA - Position fixe en bas */}
-                            <div className="flex items-center justify-end pt-3 mt-2">
-                              <Link
-                                to={`/cabinets/${cabinet.id}`}
-                                className="mr-4 font-semibold text-blue-600 transition-colors cursor-pointer text-md hover:text-blue-800"
-                              >
-                                View Details →
-                              </Link>
-                              <Button
-                                className="px-6 py-4 font-semibold text-white transition-all duration-200 rounded-lg shadow-sm text-md bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow"
-                                onClick={() => navigate(`/reservations/${cabinet.id}`)}
-                              >
-                                Book Now
-                              </Button>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
               </div>
             </div>
             {/* Right Side - Map */}
@@ -505,11 +502,11 @@ export default function SearchResults() {
                         >
                           <Popup>
                             <div className="rounded-lg">
-                              <div className="relative h-32 overflow-hidden rounded-t-lg w-80">
+                              <div className="relative w-64 h-32 overflow-hidden rounded-t-lg">
                                 <img
                                   src={cabinet.image || "/placeholder.svg?height=128&width=320&query=medical clinic"}
                                   alt={`${cabinet.name || "Clinic"} image`}
-                                  className="object-cover w-full h-full"
+                                  className="object-cover w-full h-full rounded-lg"
                                 />
                               </div>
                               <div className="p-4">
@@ -517,6 +514,9 @@ export default function SearchResults() {
                                   <h4 className="pr-2 text-lg font-bold text-gray-900">
                                     {cabinet.name || "Unnamed Clinic"}
                                   </h4>
+                                  <div>
+                                   <Badge>{cabinet.opening_time}</Badge>
+                                  </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 mb-4">
                                   <div className="flex items-center gap-2 text-sm">
