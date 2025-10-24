@@ -135,7 +135,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('patients', PatientController::class);
     Route::get('patients-by-doctor',[PatientController::class,'patientsByDoctor']);
     // RESTful resource routes for staff (index, store, show, update, destroy)
-    Route::apiResource('staff', StaffController::class);
+    Route::apiResource('staff', StaffController::class)->except(['store']);
+    // Custom route for storing a staff member with cabinetId
+    Route::post('/cabinets/{cabinetId}/staff', [StaffController::class, 'store'])->name('staff.store');
     // Custom endpoint for authenticated user's staff profile
     Route::get('staff/me', [StaffController::class, 'me']);
 

@@ -390,14 +390,26 @@ const ClinicDetails = () => {
                           </span>
                         </div>
                       )}
-                      {doctor.available_days && doctor.available_days.length > 0 && (
-                        <div className="flex items-start gap-2">
-                          <Calendar size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-600">
-                            Available: {doctor.available_days.join(", ")}
-                          </span>
-                        </div>
-                      )}
+                      {doctor.available_days && (
+  <div className="flex items-start gap-2">
+    <Calendar size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+    <span className="text-sm text-gray-600">
+      Available: {(() => {
+        try {
+          if (Array.isArray(doctor.available_days) && doctor.available_days.length > 0) {
+            return doctor.available_days.join(", ");
+          } else if (typeof doctor.available_days === "string") {
+            const parsedDays = JSON.parse(doctor.available_days);
+            return Array.isArray(parsedDays) && parsedDays.length > 0 ? parsedDays.join(", ") : "Not specified";
+          }
+          return "Not specified";
+        } catch (e) {
+          return "Not specified";
+        }
+      })()}
+    </span>
+  </div>
+)}
                     </div>
 
                     {/* Book Appointment Button */}
