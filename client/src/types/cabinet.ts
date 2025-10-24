@@ -32,7 +32,7 @@ export interface Cabinet {
     start_time: string;
     end_time: string;
     available_days: string[];
-    doctor_profile_image:string;
+    doctor_profile_image: string;
     is_active: boolean;
     speciality: { id: number; name: string; icon: string };
   }>;

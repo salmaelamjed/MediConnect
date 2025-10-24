@@ -8,6 +8,7 @@ import {
   Users,
   Star,
   EqualApproximately,
+  ArrowRight,
 } from "lucide-react"
 import type React from "react"
 import { Button } from "@/components/ui/button"
@@ -29,6 +30,8 @@ import { clearSearchResults } from "@/store/cabinets/cabinetsSlice"
 import { actSearchCabinet } from "@/store/search/act/actSearchCabinet"
 import { Input } from "@/components/ui/input"
 import Loader from "@/components/ui/Loader"
+import { MedicalIcon } from "@/components/ui/medical-icon"
+
 // Fix for Leaflet default marker icons
 interface IconDefault extends L.Icon {
   _getIconUrl?: () => string
@@ -124,6 +127,40 @@ const getDistance = (cabinet: Cabinet, userLocation: { lat: number; lng: number 
   return distance >= 1 ? `${distance.toFixed(1)} km` : `${(distance * 1000).toFixed(0)} m`
 }
 
+// Availability logic
+interface Doctor {
+  start_time: string
+  end_time: string
+  available_days: string[]
+}
+
+const isClinicOpen = (doctor: Doctor): boolean => {
+  const now = new Date()
+  const daysInFrench = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"]
+  const currentDay = daysInFrench[now.getDay()].toLowerCase()
+  const currentHours = now.getHours()
+  const currentMinutes = now.getMinutes()
+  const currentSeconds = now.getSeconds()
+  const currentTimeInSeconds = currentHours * 3600 + currentMinutes * 60 + currentSeconds
+
+  // Check if today is an available day
+  if (!doctor.available_days.includes(currentDay)) {
+    return false
+  }
+
+  // Parse start and end times (e.g., "08:00:00" -> seconds since midnight)
+  const parseTime = (time: string) => {
+    const [hours, minutes, seconds] = time.split(":").map(Number)
+    return hours * 3600 + minutes * 60 + seconds
+  }
+
+  const startTime = parseTime(doctor.start_time)
+  const endTime = parseTime(doctor.end_time)
+
+  // Check if current time is within the start and end time
+  return currentTimeInSeconds >= startTime && currentTimeInSeconds <= endTime
+}
+
 export default function SearchResults() {
   const location = useLocation()
   const searchParams = new URLSearchParams(location.search)
@@ -147,7 +184,7 @@ export default function SearchResults() {
       if (term.trim() && term.length >= 2) {
         dispatch(actSearchCabinet({ searchTerm: term, date: selectedDate, specialtyId: selectedSpecialtyId }))
           .unwrap()
-          .catch((err: any) => {
+          .catch((err: string) => {
             toast.error(err || "Failed to fetch suggestions.")
             console.error(err)
           })
@@ -168,7 +205,7 @@ export default function SearchResults() {
         .then((result) => {
           console.log("Search results fetched:", result)
         })
-        .catch((err) => {
+        .catch((err: string) => {
           toast.error(err || "Failed to fetch search results.")
           console.error(err)
         })
@@ -335,8 +372,8 @@ export default function SearchResults() {
 
       <section className="container w-full px-4 py-6 mx-auto" aria-live="polite">
         {loading === "pending" ? (
-          <div className="flex flex-col items-center justify-center ">
-           <Loader/>
+          <div className="flex flex-col items-center justify-center">
+            <Loader />
           </div>
         ) : searchResults.length === 0 && loading === "succeeded" ? (
           <Card className="flex flex-col items-center justify-center text-center border-none shadow-none">
@@ -360,108 +397,122 @@ export default function SearchResults() {
             {/* Main Content - Results */}
             <div className="lg:col-span-7">
               <div className="space-y-4">
-               {searchResults.map((cabinet) => {
-                    const distance = getDistance(cabinet, userLocation)
-                    return (
-                      <Card
-                        key={cabinet.id}
-                        className="overflow-hidden transition-all duration-300 border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue-300"
-                        onMouseEnter={() => setHoveredCabinetId(String(cabinet.id))}
-                        onMouseLeave={() => setHoveredCabinetId(null)}
-                      >
-                        <CardContent className="p-0">
-                          <div className="flex flex-col md:flex-row">
-                            {/* Image Section - Reduced height */}
-                            <div className="relative h-20 md:w-60 md:h-auto group">
-                              <div className="absolute inset-0 z-10" />
-                              <img
-                                src={cabinet.image || "/placeholder.svg?height=200&width=240&query=medical clinic"}
-                                alt={`${cabinet.name || "Clinic"} image`}
-                                className="object-cover w-full h-full"
-                              />
-                              <Badge className="absolute px-1.5 py-0.5 text-xs font-bold text-white bg-orange-500 border-0 top-2 left-2">
-                                ⭐ 5.0
-                              </Badge>
-                            </div>
+                {searchResults.map((cabinet) => {
+                  const distance = getDistance(cabinet, userLocation)
+                  return (
+                    <Card
+                      key={cabinet.id}
+                      className="overflow-hidden transition-all duration-300 border border-gray-100 shadow-sm hover:shadow-lg hover:border-blue-300"
+                      onMouseEnter={() => setHoveredCabinetId(String(cabinet.id))}
+                      onMouseLeave={() => setHoveredCabinetId(null)}
+                    >
+                      <CardContent className="p-0">
+                        <div className="flex flex-col md:flex-row">
+                          {/* Image Section - Reduced height */}
+                          <div className="relative h-20 md:w-60 md:h-auto group">
+                            <div className="absolute inset-0 z-10" />
+                            <img
+                              src={cabinet.image || "/placeholder.svg?height=200&width=240&query=medical clinic"}
+                              alt={`${cabinet.name || "Clinic"} image`}
+                              className="object-cover w-full h-full"
+                            />
+                            <Badge className="absolute px-1.5 py-0.5 text-xs font-bold text-white bg-orange-500 border-0 top-2 left-2">
+                              ⭐ 5.0
+                            </Badge>
+                          </div>
 
-                            {/* Content Section - Compact layout */}
-                            <div className="flex flex-col flex-1 p-3 overflow-hidden">
-                              <div className="flex-1">
-                                {/* Header */}
-                                <div className="flex items-start justify-between mb-2">
-                                  <div className="flex-1">
-                                    <h3 className="mb-1 text-base font-bold text-gray-900 transition-colors cursor-pointer hover:text-blue-800 line-clamp-1">
-                                      {cabinet.name || "Unnamed Clinic"}
-                                    </h3>
-                                    {/* Location & Distance */}
-                                    <div className="flex flex-col gap-0.5 mb-1 text-gray-600">
-                                      <div className="flex items-center gap-1">
-                                        <MapIcon className="flex-shrink-0 w-4 h-4 text-green-600" />
-                                        <span className="text-sm line-clamp-1">
-                                          {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
-                                        </span>
-                                        <EqualApproximately className="flex-shrink-0 w-2.5 h-2.5 text-primary" />
-                                        <LucideMapPinned className="flex-shrink-0 w-4 h-4 text-red-500" />
-                                        <span className="text-xs font-medium">{distance}</span>
-                                      </div>
-                                    </div>
-                                    {/* Owner */}
-                                    <div className="flex items-center gap-1 mb-1 text-gray-600">
-                                      <User className="flex-shrink-0 w-3.5 h-3.5 text-blue-500" />
-                                      <span className="text-sm font-medium">Owner:</span>
-                                      <span className="text-xs">salma</span>
-                                    </div>
-                                    {/* Contact */}
-                                    <div className="flex items-center gap-1 mb-2 text-gray-600">
-                                      <Mail className="flex-shrink-0 w-3.5 h-3.5 text-blue-500" />
-                                      <span className="text-sm font-medium">Contact:</span>
-                                      <span className="text-xs text-blue-600 cursor-pointer hover:underline line-clamp-1">
-                                        {cabinet.email}
+                          {/* Content Section - Compact layout */}
+                          <div className="flex flex-col flex-1 p-3 overflow-hidden">
+                            <div className="flex-1">
+                              {/* Header */}
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <h3 className="mb-1 text-base font-bold text-gray-900 transition-colors cursor-pointer hover:text-blue-800 line-clamp-1">
+                                    {cabinet.name || "Unnamed Clinic"}
+                                  </h3>
+                                  {/* Location & Distance */}
+                                  <div className="flex flex-col gap-0.5 mb-1 text-gray-600">
+                                    <div className="flex items-center gap-1">
+                                      <MapIcon className="flex-shrink-0 w-4 h-4 text-green-600" />
+                                      <span className="text-sm line-clamp-1">
+                                        {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
                                       </span>
+                                      <EqualApproximately className="flex-shrink-0 w-2.5 h-2.5 text-primary" />
+                                      <LucideMapPinned className="flex-shrink-0 w-4 h-4 text-red-500" />
+                                      <span className="text-xs font-medium">{distance}</span>
                                     </div>
                                   </div>
-                                </div>
-                                {/* Specialties */}
-                                <div className="mb-1">
-                                  <h4 className="mb-0.5 font-semibold text-gray-700 text-sm">Specialties:</h4>
-                                  <div className="flex flex-wrap gap-1">
-                                    {(cabinet.specialities || []).slice(0, 3).map((specialty) => (
-                                      <span
-                                        key={specialty.id}
-                                        className="px-1.5 py-0.5 text-xs font-medium text-blue-700 transition-colors border border-blue-200 rounded-full bg-blue-50 hover:bg-blue-100 line-clamp-1"
-                                      >
-                                        {specialty.name}
-                                      </span>
-                                    ))}
-                                    {(cabinet.specialities || []).length > 3 && (
-                                      <span className="px-1.5 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
-                                        +{(cabinet.specialities || []).length - 3}
-                                      </span>
-                                    )}
+                                  {/* Contact */}
+                                  <div className="flex items-center gap-1 mb-2 text-gray-600">
+                                    <Mail className="flex-shrink-0 w-3.5 h-3.5 text-blue-500" />
+                                    <span className="text-sm font-medium">Contact:</span>
+                                    <span className="text-xs text-blue-600 cursor-pointer hover:underline line-clamp-1">
+                                      {cabinet.email}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
-                              {/* Footer with CTA */}
-                              <div className="flex items-center justify-end mt-1">
-                                <Link
-                                  to={`/cabinets/${cabinet.id}`}
-                                  className="mr-3 text-sm font-semibold text-blue-600 transition-colors cursor-pointer hover:text-blue-800"
-                                >
-                                  View Details →
-                                </Link>
-                                <Button
-                                  className="px-4 py-2 text-sm font-semibold text-white transition-all duration-200 rounded-lg shadow-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow"
-                                  onClick={() => navigate(`/reservations/${cabinet.id}`)}
-                                >
-                                  Book Now
-                                </Button>
+                              {/* Specialties */}
+                              <div className="mb-1">
+                                <h4 className="mb-0.5 font-semibold text-gray-700 text-sm">Specialties:</h4>
+                                <div className="flex flex-wrap gap-1">
+                                  {(cabinet.specialities || []).slice(0, 3).map((specialty) => (
+                                    <div
+                                      key={specialty.id}
+                                      className="flex items-center px-1.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-full  transition-colors"
+                                    >
+                                      <MedicalIcon name={specialty.icon} size={12} className="mr-1 text-blue-700" />
+                                      <span>{specialty.name}</span>
+                                    </div>
+                                  ))}
+                                  {(cabinet.specialities || []).length > 3 && (
+                                    <span className="px-1.5 py-0.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                                      +{(cabinet.specialities || []).length - 3}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+                            </div>
+                              {/* Availability */}
+            <div className="mt-3">
+              <h4 className="mb-1 text-sm font-semibold text-gray-700">Availability:</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {(cabinet.doctors?.[0]?.available_days || []).slice(0, 5).map((day) => (
+                  <span
+                    key={day}
+                    className="px-2 py-1 text-xs font-medium text-green-700 border border-green-200 rounded-full bg-green-50"
+                  >
+                    {day.charAt(0).toUpperCase() + day.slice(1)}
+                  </span>
+                ))}
+                {(cabinet.doctors?.[0]?.available_days || []).length > 5 && (
+                  <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                    +{(cabinet.doctors[0].available_days || []).length - 5}
+                  </span>
+                )}
+              </div>
+            </div>
+                            {/* Footer with CTA */}
+                            <div className="flex items-center justify-end mt-1">
+                              <Link
+                                to={`/cabinets/${cabinet.id}`}
+                                className="mr-3 text-sm font-semibold text-blue-600 transition-colors cursor-pointer hover:text-blue-800"
+                              >
+                                View Details <ArrowRight className="inline-block w-4 h-4" />
+                              </Link>
+                              <Button
+                                className="px-8 py-2 text-sm font-semibold text-white transition-all duration-200 rounded-lg shadow-sm bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 hover:shadow"
+                                onClick={() => navigate(`/reservations/${cabinet.id}`)}
+                              >
+                                Book Now
+                              </Button>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             </div>
             {/* Right Side - Map */}
@@ -501,55 +552,94 @@ export default function SearchResults() {
                           }}
                         >
                           <Popup>
-                            <div className="rounded-lg">
-                              <div className="relative w-64 h-32 overflow-hidden rounded-t-lg">
+                            <div className="rounded-lg w-64 max-w-[90vw]">
+                              {/* Image Section */}
+                              <div className="relative h-20 overflow-hidden rounded-t-lg">
                                 <img
-                                  src={cabinet.image || "/placeholder.svg?height=128&width=320&query=medical clinic"}
+                                  src={cabinet.image || "/placeholder.svg?height=80&width=256&query=medical clinic"}
                                   alt={`${cabinet.name || "Clinic"} image`}
-                                  className="object-cover w-full h-full rounded-lg"
+                                  className="object-cover w-full h-full"
                                 />
+                                <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 text-xs font-bold text-white bg-orange-500 rounded-full">
+                                  ⭐ 5.0
+                                </span>
                               </div>
-                              <div className="p-4">
-                                <div className="flex items-start justify-between mb-3">
-                                  <h4 className="pr-2 text-lg font-bold text-gray-900">
+
+                              {/* Content Section */}
+                              <div className="p-2.5">
+                                {/* Clinic Name and Availability Badge */}
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <h4 className="text-base font-bold text-gray-900 transition-colors line-clamp-1 hover:text-blue-600">
                                     {cabinet.name || "Unnamed Clinic"}
                                   </h4>
-                                  <div>
-                                   <Badge>{cabinet.opening_time}</Badge>
-                                  </div>
+                                  {cabinet.doctors?.length > 0 && (
+                                    <Badge
+                                      className={`px-1.5 py-0.5 text-xs font-semibold ${
+                                        isClinicOpen(cabinet.doctors[0]) ? "bg-green-500" : "bg-red-500"
+                                      } text-white rounded-full`}
+                                    >
+                                      {isClinicOpen(cabinet.doctors[0]) ? "Open" : "Closed"}
+                                    </Badge>
+                                  )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-3 mb-4">
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Users className="w-4 h-4 text-green-500" />
-                                    <span className="text-gray-600">
-                                      <strong>{cabinet.doctors?.length || 0}</strong> doctors
+
+                                {/* Address */}
+                                <div className="flex items-start gap-1.5 text-xs text-gray-600 mb-2">
+                                  <MapIcon className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
+                                  <span className="line-clamp-2">
+                                    {cabinet.address || "Address not available"}, {cabinet.postal_code} {cabinet.city}
+                                  </span>
+                                </div>
+
+                                {/* Info Grid */}
+                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                                    <Users className="w-3.5 h-3.5 text-green-500" />
+                                    <span>
+                                      <strong>{cabinet.doctors?.length || 0}</strong>{" "}
+                                      {cabinet.doctors?.length === 1 ? "doctor" : "doctors"}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Star className="w-4 h-4 text-yellow-500" />
-                                    <span className="text-gray-600">
-                                      <strong>{(cabinet.specialities || []).length}</strong> specialties
+                                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                                    <Star className="w-3.5 h-3.5 text-yellow-500" />
+                                    <span>
+                                      <strong>{(cabinet.specialities || []).length}</strong>{" "}
+                                      {cabinet.specialities?.length === 1 ? "specialty" : "specialties"}
                                     </span>
                                   </div>
                                 </div>
-                                <div className="mb-4">
-                                  <h5 className="mb-2 text-xs font-semibold text-gray-500 uppercase">Specialties</h5>
+
+                                {/* Specialties */}
+                                <div className="mb-2">
+                                  <h5 className="mb-1 text-xs font-semibold text-gray-500 uppercase">Specialties</h5>
                                   <div className="flex flex-wrap gap-1">
                                     {(cabinet.specialities || []).slice(0, 3).map((specialty) => (
-                                      <span
+                                      <div
                                         key={specialty.id}
-                                        className="px-2 py-1 text-xs text-blue-700 border border-blue-200 rounded-full bg-blue-50"
+                                        className="flex items-center px-1.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors"
                                       >
-                                        {specialty.name}
-                                      </span>
+                                        <MedicalIcon name={specialty.icon} size={12} className="mr-1 text-blue-700" />
+                                        <span>{specialty.name}</span>
+                                      </div>
                                     ))}
                                     {(cabinet.specialities || []).length > 3 && (
-                                      <span className="px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded-full">
+                                      <span className="px-1.5 py-0.5 text-xs font-medium text-gray-500 bg-gray-100 rounded-full">
                                         +{(cabinet.specialities || []).length - 3}
                                       </span>
                                     )}
                                   </div>
                                 </div>
+
+                                {/* Doctor Info */}
+                                {cabinet.doctors?.length > 0 && (
+                                  <div className="flex items-center gap-1 mb-2 text-xs text-gray-600">
+                                    <User className="w-3.5 h-3.5 text-blue-500" />
+                                    <span>
+                                      <strong>{cabinet.doctors[0].name}</strong> - {cabinet.doctors[0].consultation_fees}{" "}
+                                      MAD
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </Popup>

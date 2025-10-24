@@ -44,7 +44,6 @@ if (role === "owner") {
     { title: "Planning", href: "/doctor/planning", icon: Calendar },
     { title: "Reservations", href: "/doctor/reservations", icon: User },
     { title: "Patients", href: "/doctor/patients", icon: User },
-    { title: "Reservations", href: "/owner/reservations", icon: User },
     { title: "Consultations", href: "/doctor/consultations", icon: Stethoscope },
     { title: "Waiting Room", href: "/doctor/waiting_room", icon: Clock },
     { title: "Reports", href: "/doctor/reports", icon: BarChart3 },
