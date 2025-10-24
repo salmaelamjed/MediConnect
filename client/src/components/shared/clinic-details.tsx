@@ -39,9 +39,10 @@ interface Doctor {
   consultation_fees: string;
   start_time: string;
   end_time: string;
-  available_days: string[];
+  available_days: string[] | string | null | undefined;
   is_active: boolean;
   profile_image?: string;
+  doctor_profile_image?: string;
   speciality: {
     id: number;
     name: string;
@@ -65,32 +66,6 @@ interface Clinic {
   }>;
   latitude?: string;
   longitude?: string;
-}
-
-interface Cabinet {
-  id: number;
-  name: string;
-  description: string | null;
-  image: string | null;
-  detail_images: string[] | null;
-  address: string;
-  city: string;
-  postal_code: string;
-  latitude: string;
-  longitude: string;
-  email?: string;
-  opening_time: string;
-  closing_time: string;
-  working_days: string[];
-  specialities: {
-    id: number;
-    name: string;
-    icon: string;
-    description?: string;
-    is_active?: boolean;
-  }[];
-  doctors: Doctor[];
-  nearby_clinics: Clinic[];
 }
 
 const ClinicDetails = () => {
@@ -127,7 +102,7 @@ const ClinicDetails = () => {
   useEffect(() => {
     if (selectedDate && selectedDoctor) {
       const dayOfWeek = format(selectedDate, "EEEE", { locale: fr }).toLowerCase();
-      if (!selectedDoctor.available_days.includes(dayOfWeek)) {
+      if (!Array.isArray(selectedDoctor.available_days) || !selectedDoctor.available_days.includes(dayOfWeek)) {
         dispatch({ type: "reservations/resetAvailableSlots" });
         toast.error("Selected date is not available for this doctor.", { position: "bottom-right" });
         return;
@@ -151,21 +126,17 @@ const ClinicDetails = () => {
       const latitude = Number(selectedCabinet.latitude);
       const longitude = Number(selectedCabinet.longitude);
 
-      // Initialize Leaflet map
       mapInstanceRef.current = L.map(mapRef.current).setView([latitude, longitude], 15);
 
-      // Add OpenStreetMap tiles
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(mapInstanceRef.current);
 
-      // Add marker
       L.marker([latitude, longitude])
         .addTo(mapInstanceRef.current)
         .bindPopup(selectedCabinet.name)
         .openPopup();
 
-      // Cleanup on unmount
       return () => {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.remove();
@@ -174,10 +145,6 @@ const ClinicDetails = () => {
       };
     }
   }, [selectedCabinet, isValidLatLng]);
-
- 
-
- 
 
   const closeSlider = () => {
     setIsSliderOpen(false);
@@ -250,7 +217,6 @@ const ClinicDetails = () => {
     );
   }
 
-
   return (
     <div className="w-full min-h-screen">
       <div className="w-full px-2 py-4 mx-auto">
@@ -310,8 +276,6 @@ const ClinicDetails = () => {
             </p>
           </div>
 
-         
-
           {/* Specialities Section */}
           <div className="mb-12">
             <h3 className="mb-4 text-xl font-bold text-gray-900">Specialities</h3>
@@ -346,11 +310,10 @@ const ClinicDetails = () => {
                     key={index}
                     className="p-6 transition-all duration-300 bg-white border border-gray-200 shadow-sm group rounded-xl hover:shadow-lg hover:border-green-200"
                   >
-                    {/* Doctor Header */}
                     <div className="flex items-center gap-4 mb-4">
                       <div className="relative">
                         <img
-                          src={doctor.profile_image || "/placeholder-doctor.jpg"}
+                          src={doctor.profile_image || doctor.doctor_profile_image || "/placeholder-doctor.jpg"}
                           alt={doctor.name}
                           className="object-cover w-16 h-16 border-2 border-green-200 rounded-full"
                         />
@@ -366,12 +329,10 @@ const ClinicDetails = () => {
                       </div>
                     </div>
 
-                    {/* Doctor Bio */}
                     <p className="mb-4 text-sm leading-relaxed text-gray-600 line-clamp-3">
                       {doctor.bio || "No bio available."}
                     </p>
 
-                    {/* Doctor Details */}
                     <div className="mb-6 space-y-3">
                       {doctor.consultation_fees && (
                         <div className="flex items-center gap-2">
@@ -390,29 +351,30 @@ const ClinicDetails = () => {
                           </span>
                         </div>
                       )}
-                      {doctor.available_days && (
-  <div className="flex items-start gap-2">
-    <Calendar size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-    <span className="text-sm text-gray-600">
-      Available: {(() => {
-        try {
-          if (Array.isArray(doctor.available_days) && doctor.available_days.length > 0) {
-            return doctor.available_days.join(", ");
-          } else if (typeof doctor.available_days === "string") {
-            const parsedDays = JSON.parse(doctor.available_days);
-            return Array.isArray(parsedDays) && parsedDays.length > 0 ? parsedDays.join(", ") : "Not specified";
-          }
-          return "Not specified";
-        } catch (e) {
-          return "Not specified";
-        }
-      })()}
-    </span>
-  </div>
-)}
+                      {doctor.available_days != null && (
+                        <div className="flex items-start gap-2">
+                          <Calendar size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-gray-600">
+                            Available: {(() => {
+                              console.log("Doctor:", doctor.name, "available_days:", doctor.available_days, "type:", typeof doctor.available_days);
+                              try {
+                                if (Array.isArray(doctor.available_days) && doctor.available_days.length > 0) {
+                                  return doctor.available_days.join(", ");
+                                } else if (typeof doctor.available_days === "string") {
+                                  const parsedDays = JSON.parse(doctor.available_days);
+                                  return Array.isArray(parsedDays) && parsedDays.length > 0 ? parsedDays.join(", ") : "Not specified";
+                                }
+                                return "Not specified";
+                              } catch (e) {
+                                console.error("Error parsing available_days for", doctor.name, ":", e);
+                                return "Not specified";
+                              }
+                            })()}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Book Appointment Button */}
                     <Button
                       onClick={() => handleBookDoctor(doctor)}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors duration-200"
@@ -460,7 +422,7 @@ const ClinicDetails = () => {
             )}
           </div>
 
-          {/* Nearby Clinics Section - Design amélioré */}
+          {/* Nearby Clinics Section */}
           <div className="mb-12">
             <h6 className="mb-6 text-xl font-bold text-gray-900">Clinics nearby</h6>
             {selectedCabinet.nearby_clinics?.length > 0 ? (
@@ -470,7 +432,6 @@ const ClinicDetails = () => {
                     key={index}
                     className="overflow-hidden transition-all duration-300 bg-white border border-gray-200 shadow-sm rounded-xl hover:shadow-lg hover:border-blue-300 group"
                   >
-                    {/* Clinic Image */}
                     <div className="relative h-48 overflow-hidden">
                       <img
                         src={clinic.image || "/placeholder-clinic.jpg"}
@@ -478,10 +439,7 @@ const ClinicDetails = () => {
                         className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
                       />
                     </div>
-
-                    {/* Clinic Content */}
                     <div className="p-5">
-                      {/* Clinic Header */}
                       <div className="mb-4">
                         <h4 className="mb-2 text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-700">
                           {clinic.name}
@@ -493,8 +451,6 @@ const ClinicDetails = () => {
                           </span>
                         </div>
                       </div>
-
-                      {/* Specialities */}
                       {clinic.specialities && clinic.specialities.length > 0 && (
                         <div className="mb-4">
                           <div className="flex flex-wrap gap-1">
@@ -514,8 +470,6 @@ const ClinicDetails = () => {
                           </div>
                         </div>
                       )}
-
-                      {/* Distance Info (exemple) */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2 text-sm text-green-600">
                           <Navigation size={14} />
@@ -526,8 +480,6 @@ const ClinicDetails = () => {
                           <span className="text-sm font-medium text-gray-700">4.8</span>
                         </div>
                       </div>
-
-                      {/* Action Buttons */}
                       <div className="flex gap-2">
                         <Button
                           onClick={() => handleViewClinic(clinic.id)}
@@ -535,7 +487,6 @@ const ClinicDetails = () => {
                         >
                           Voir la clinique
                         </Button>
-                        
                       </div>
                     </div>
                   </div>
@@ -613,7 +564,7 @@ const ClinicDetails = () => {
                   onSelect={(date) => setSelectedDate(date ?? null)}
                   disabled={(date) =>
                     date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                    (selectedDoctor
+                    (selectedDoctor && Array.isArray(selectedDoctor.available_days)
                       ? !selectedDoctor.available_days.includes(
                           format(date, "EEEE", { locale: fr }).toLowerCase()
                         )
@@ -713,7 +664,6 @@ const ClinicDetails = () => {
             </SheetContent>
           </Sheet>
 
-          {/* Confirmation Modal */}
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>

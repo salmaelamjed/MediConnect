@@ -24,10 +24,41 @@ class StaffController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
+   
+
     public function index(Request $request)
     {
-        // Build query with optional filters
-        $query = Staff::with(['user', 'cabinet'])->latest();
+        // Get the authenticated user
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur non authentifié',
+                'error' => 'AuthenticationException'
+            ], 401);
+        }
+
+        // Get the IDs of cabinets owned by the authenticated user
+        $ownedCabinetIds = Cabinet::where('owner_id', $user->id)->pluck('id')->toArray();
+
+        if (empty($ownedCabinetIds)) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'current_page' => 1,
+                'last_page' => 1,
+                'per_page' => $request->input('per_page', 15),
+                'total' => 0,
+                'from' => 0,
+                'to' => 0,
+                'message' => 'Aucun cabinet trouvé pour cet utilisateur.',
+            ], 200);
+        }
+
+        // Build query with optional filters, restricted to owned cabinets
+        $query = Staff::with(['user', 'cabinet'])
+            ->whereIn('cabinet_id', $ownedCabinetIds)
+            ->latest();
 
         // Search by name, email (from user), or job title
         if ($request->has('search')) {
@@ -44,9 +75,17 @@ class StaffController extends Controller
             $query->where('job_title', $request->input('job_title'));
         }
 
-        // Filter by cabinet_id
+        // Filter by cabinet_id, but only allow cabinets owned by the user
         if ($request->has('cabinet_id')) {
-            $query->where('cabinet_id', $request->input('cabinet_id'));
+            $cabinetId = $request->input('cabinet_id');
+            if (!in_array($cabinetId, $ownedCabinetIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cabinet non trouvé ou vous n\'êtes pas le propriétaire',
+                    'error' => 'Accès non autorisé'
+                ], 403);
+            }
+            $query->where('cabinet_id', $cabinetId);
         }
 
         // Paginate results

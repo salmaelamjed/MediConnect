@@ -19,6 +19,7 @@ import notifications from './notifications/notificationsSlice';
 import search from "./search/searchSlice"
 import patients from './patients/patientsSlice'
 import plannings from './planning/PlanningSlice'
+import staff from "./staff/staffSlice"
 const authPersistConfig = {
   key: "auth",
   storage,
@@ -35,6 +36,7 @@ const rootReducer = combineReducers({
   search,
   patients,
   plannings,
+  staff,
 });
 
 const store = configureStore({

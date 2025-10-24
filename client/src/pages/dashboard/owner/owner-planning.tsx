@@ -27,6 +27,7 @@ import {
   parseISO,
 } from "date-fns"
 import { fr } from "date-fns/locale"
+import Loader from "@/components/ui/Loader"
 
 // Define interfaces for appointment and slot
 interface Appointment {
@@ -171,7 +172,6 @@ export default function OwnerPlanning() {
   const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("week")
-  const [selectedSlot, setSelectedSlot] = useState<{ date: string; time: string } | null>(null)
 
   const { plannings, loading, error } = useAppSelector((state) => state.plannings)
   const dispatch = useAppDispatch()
@@ -248,10 +248,6 @@ export default function OwnerPlanning() {
     setIsDetailsSheetOpen(true)
   }
 
-  const handleAddSlotClick = (date: string, time: string) => {
-    setSelectedSlot({ date, time })
-    setIsAddSheetOpen(true)
-  }
 
   const handleDayClick = (date: string) => {
     setCurrentDate(parseISO(date))
@@ -286,8 +282,7 @@ export default function OwnerPlanning() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 border-b-2 border-blue-500 rounded-full animate-spin"></div>
-          <p className="font-medium text-gray-600">Loading appointments...</p>
+        \<Loader/>
         </div>
       </div>
     )
@@ -420,18 +415,7 @@ export default function OwnerPlanning() {
                             const height = getAppointmentHeight(appointment)
                             if (appointment.status === "available") {
                               return (
-                                <button
-                                  onClick={() => handleAddSlotClick(appointment.date, appointment.startTime)}
-                                  className="absolute p-3 text-center text-gray-500 transition-all border-2 border-gray-300 border-dashed rounded-lg inset-2 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                  style={{
-                                    height: `calc(${height * 80}px - 16px)`,
-                                    zIndex: 10,
-                                  }}
-                                >
-                                  <div className="flex items-center justify-center h-full font-medium">
-                                    <Plus />
-                                  </div>
-                                </button>
+                                <></>
                               )
                             } else {
                               return (
@@ -508,21 +492,7 @@ export default function OwnerPlanning() {
                             <div key={`${day.date}-${time}`} className="relative p-2 bg-white border-l border-gray-100">
                               {appointment && (
                                 <>
-                                  {appointment.status === "available" ? (
-                                    <button
-                                      onClick={() => handleAddSlotClick(appointment.date, appointment.startTime)}
-                                      className="absolute p-3 text-center text-gray-500 transition-all border-2 border-gray-300 border-dashed rounded-lg inset-2 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                      style={{
-                                        height: `calc(${getAppointmentHeight(appointment) * 80}px - 16px)`,
-                                        zIndex: 10,
-                                      }}
-                                    >
-                                      <div className="flex items-center justify-center h-full font-medium">
-                                        <Plus />
-                                      </div>
-                                    </button>
-                                  ) : (
-                                    appointment.patient && (
+                                { appointment.patient && (
                                       <button
                                         onClick={() => handleAppointmentClick(appointment)}
                                         className={`bg-blue-200 border-l-4 border-l-blue-500 absolute inset-2 rounded-lg  p-3 text-left transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm ${appointment.color}`}
@@ -554,8 +524,9 @@ export default function OwnerPlanning() {
                                           </div>
                                         </div>
                                       </button>
-                                    )
-                                  )}
+                                    )}
+                                   
+                                 
                                 </>
                               )}
                             </div>
@@ -718,12 +689,11 @@ export default function OwnerPlanning() {
                   <Input
                     id="date"
                     type="date"
-                    defaultValue={selectedSlot?.date || format(new Date(), "yyyy-MM-dd")}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="time">Time</Label>
-                  <Select defaultValue={selectedSlot?.time || timeSlots[0]}>
+                  <Select >
                     <SelectTrigger id="time">
                       <SelectValue />
                     </SelectTrigger>
