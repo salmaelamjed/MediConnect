@@ -16,6 +16,7 @@ use App\Models\Doctor;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
+use App\Models\Schedule;
 
 class StaffController extends Controller
 {
@@ -24,8 +25,6 @@ class StaffController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-   
-
     public function index(Request $request)
     {
         // Get the authenticated user
@@ -115,191 +114,208 @@ class StaffController extends Controller
      */
     public function store(Request $request, int $cabinetId)
     {
-         try {
-        // Vérifier si l'utilisateur authentifié est le propriétaire du cabinet
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Utilisateur non authentifié',
-                'error' => 'Authentification requise'
-            ], 401);
-        }
+        try {
+            // Vérifier si l'utilisateur authentifié est le propriétaire du cabinet
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié',
+                    'error' => 'Authentification requise'
+                ], 401);
+            }
 
-        $cabinet = Cabinet::where('id', $cabinetId)
-            ->where('owner_id', $user->id)
-            ->first();
+            $cabinet = Cabinet::where('id', $cabinetId)
+                ->where('owner_id', $user->id)
+                ->first();
 
-        if (!$cabinet) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cabinet non trouvé ou vous n\'êtes pas le propriétaire',
-                'error' => 'Accès non autorisé'
-            ], 403);
-        }
+            if (!$cabinet) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cabinet non trouvé ou vous n\'êtes pas le propriétaire',
+                    'error' => 'Accès non autorisé'
+                ], 403);
+            }
 
-        // Validation des données d'entrée (incluant les champs pour créer un nouvel utilisateur)
-        $validated = $request->validate([
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed', // Ajout de 'password_confirmation' dans la requête
-            'name' => 'required|string|max:255', // Nom de l'utilisateur/médecin
-            'speciality_id' => 'required|exists:specialities,id',
-            'license_number' => 'required|string|unique:doctors,license_number',
-            'bio' => 'nullable|string',
-            'consultation_fees' => 'nullable|numeric|min:0',
-            'start_time' => 'nullable|date_format:H:i',
-            'end_time' => 'nullable|date_format:H:i',
-            'available_days' => 'nullable|array',
-            'available_days.*' => 'string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
-            'profile_image' => 'nullable|string|max:255' // Optionnel pour l'image de profil
-        ]);
+            // Validation des données d'entrée (incluant les champs pour créer un nouvel utilisateur)
+            $validated = $request->validate([
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|string|min:8|confirmed',
+                'name' => 'required|string|max:255',
+                'speciality_id' => 'required|exists:specialities,id',
+                'license_number' => 'required|string|unique:doctors,license_number',
+                'bio' => 'nullable|string',
+                'consultation_fees' => 'nullable|numeric|min:0',
+                'start_time' => 'nullable|date_format:H:i',
+                'end_time' => 'nullable|date_format:H:i',
+                'available_days' => 'nullable|array',
+                'available_days.*' => 'string|in:lundi,mardi,mercredi,jeudi,vendredi,samedi,dimanche',
+                'profile_image' => 'nullable|string|max:255'
+            ]);
 
-        // Démarrer une transaction pour assurer l'intégrité (création user + doctor + staff)
-        DB::beginTransaction();
+            // Démarrer une transaction pour assurer l'intégrité
+            DB::beginTransaction();
 
-        // Créer le nouvel utilisateur avec rôle 'doctor'
-        $doctorUser = User::create([
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'name' => $validated['name'], // Assumer que 'name' est stocké dans users si le champ existe, sinon ajuster
-            'role' => 'doctor',
-            'is_active' => true,
-            'profile_image' => $validated['profile_image'] ?? null,
-            // Ajouter d'autres champs users si nécessaire (ex: email_verified_at si auto-vérifié)
-        ]);
-
-        // Créer l'entrée du médecin
-        $doctor = Doctor::create([
-            'user_id' => $doctorUser->id,
-            'speciality_id' => $validated['speciality_id'],
-            'cabinet_id' => $cabinetId,
-            'name' => $validated['name'],
-            'license_number' => $validated['license_number'],
-            'bio' => $validated['bio'] ?? null,
-            'consultation_fees' => $validated['consultation_fees'] ?? null,
-            'start_time' => $validated['start_time'] ?? null,
-            'end_time' => $validated['end_time'] ?? null,
-            'available_days' => $validated['available_days'] ? json_encode($validated['available_days']) : null,
-            'is_active' => true,
-        ]);
-
-        // Ajouter le médecin comme membre du personnel
-        $staff = Staff::create([
-            'user_id' => $doctorUser->id,
-            'cabinet_id' => $cabinetId,
-            'name' => $validated['name'],
-            'job_title' => 'Médecin',
-            'phone_number' => null, // Optionnel, peut être ajouté dans validation si besoin
-            'bio' => $validated['bio'] ?? null,
-            'working_days' => $validated['available_days'] ? json_encode($validated['available_days']) : null,
-            'start_time' => $validated['start_time'] ?? null,
-            'end_time' => $validated['end_time'] ?? null,
-            'is_active' => true,
-            'is_owner' => false // Le médecin ajouté n'est pas le propriétaire
-        ]);
-
-        // Mettre à jour ou créer l'entrée du personnel pour le propriétaire
-        $ownerStaff = Staff::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'cabinet_id' => $cabinetId
-            ],
-            [
-                'name' => $user->name ?? 'Propriétaire',
-                'job_title' => 'Propriétaire',
-                'phone_number' => null,
-                'bio' => null,
-                'working_days' => $cabinet->working_days,
-                'start_time' => $cabinet->opening_time,
-                'end_time' => $cabinet->closing_time,
+            // Créer le nouvel utilisateur avec rôle 'doctor'
+            $doctorUser = User::create([
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'name' => $validated['name'],
+                'role' => 'doctor',
                 'is_active' => true,
-                'is_owner' => true // Marquer explicitement comme propriétaire
-            ]
-        );
+                'profile_image' => $validated['profile_image'] ?? null,
+            ]);
 
-        DB::commit();
+            // Créer l'entrée du médecin
+            $doctor = Doctor::create([
+                'user_id' => $doctorUser->id,
+                'speciality_id' => $validated['speciality_id'],
+                'cabinet_id' => $cabinetId,
+                'name' => $validated['name'],
+                'license_number' => $validated['license_number'],
+                'bio' => $validated['bio'] ?? null,
+                'consultation_fees' => $validated['consultation_fees'] ?? null,
+                'start_time' => $validated['start_time'] ?? null,
+                'end_time' => $validated['end_time'] ?? null,
+                'available_days' => $validated['available_days'] ,
+                'is_active' => true,
+            ]);
 
-        // Log de l'action
-        Log::info('Médecin ajouté au cabinet avec succès (nouvel utilisateur créé)', [
-            'cabinet_id' => $cabinetId,
-            'doctor_id' => $doctor->id,
-            'user_id' => $doctorUser->id,
-            'staff_id' => $staff->id,
-            'owner_id' => $user->id
-        ]);
+            // Ajouter le médecin comme membre du personnel
+            $staff = Staff::create([
+                'user_id' => $doctorUser->id,
+                'cabinet_id' => $cabinetId,
+                'name' => $validated['name'],
+                'job_title' => 'Médecin',
+                'phone_number' => null,
+                'bio' => $validated['bio'] ?? null,
+                'working_days' => $validated['available_days'],
+                'start_time' => $validated['start_time'] ?? null,
+                'end_time' => $validated['end_time'] ?? null,
+                'is_active' => true,
+                'is_owner' => false
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Médecin ajouté au cabinet avec succès (nouvel utilisateur créé)',
-            'data' => [
-                'user' => [
-                    'id' => $doctorUser->id,
-                    'email' => $doctorUser->email,
-                    'name' => $doctorUser->name,
-                    'role' => $doctorUser->role
-                ],
-                'doctor' => [
-    'id' => $doctor->id,
-    'user_id' => $doctor->user_id,
-    'speciality_id' => $doctor->speciality_id,
-    'cabinet_id' => $doctor->cabinet_id,
-    'name' => $doctor->name,
-    'license_number' => $doctor->license_number,
-    'bio' => $doctor->bio,
-    'consultation_fees' => $doctor->consultation_fees,
-    'start_time' => $doctor->start_time,
-    'end_time' => $doctor->end_time,
-    'available_days' => $doctor->available_days ? json_decode($doctor->available_days, true) : [], // Decode JSON to array
-    'is_active' => $doctor->is_active,
-],
-                'staff' => [
-                    'id' => $staff->id,
-                    'user_id' => $staff->user_id,
-                    'cabinet_id' => $staff->cabinet_id,
-                    'name' => $staff->name,
-                    'job_title' => $staff->job_title,
-                    'is_owner' => $staff->is_owner
-                ],
-                'owner_staff' => [
-                    'id' => $ownerStaff->id,
-                    'user_id' => $ownerStaff->user_id,
-                    'cabinet_id' => $ownerStaff->cabinet_id,
-                    'name' => $ownerStaff->name,
-                    'job_title' => $ownerStaff->job_title,
-                    'is_owner' => $ownerStaff->is_owner
+            // Mettre à jour ou créer l'entrée du personnel pour le propriétaire
+            $ownerStaff = Staff::updateOrCreate(
+                ['user_id' => $user->id, 'cabinet_id' => $cabinetId],
+                [
+                    'name' => $user->name ?? 'Propriétaire',
+                    'job_title' => 'Propriétaire',
+                    'phone_number' => null,
+                    'bio' => null,
+                    'working_days' => is_array($cabinet->working_days) ? json_encode($cabinet->working_days, JSON_UNESCAPED_SLASHES) : $cabinet->working_days,
+                    'start_time' => $cabinet->opening_time,
+                    'end_time' => $cabinet->closing_time,
+                    'is_active' => true,
+                    'is_owner' => true
                 ]
-            ]
-        ], 201);
+            );
 
-    } catch (ValidationException $e) {
-        DB::rollBack();
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur de validation',
-            'error' => $e->errors()
-        ], 422);
-    } catch (QueryException $e) {
-        DB::rollBack();
-        Log::error('Erreur de base de données lors de l\'ajout du médecin: ' . $e->getMessage(), [
-            'sql' => $e->getSql(),
-            'bindings' => $e->getBindings()
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur lors de l\'ajout du médecin',
-            'error' => 'Erreur de base de données'
-        ], 500);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Erreur inattendue dans addDoctorToCabinet: ' . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Une erreur inattendue s\'est produite',
-            'error' => 'Erreur serveur'
-        ], 500);
-    }
+            // Créer les schedules pour le médecin
+            if ($validated['available_days']) {
+                foreach ($validated['available_days'] as $day) {
+                    Schedule::create([
+                        'doctor_id' => $doctor->id,
+                        'cabinet_id' => $cabinetId,
+                        'day_of_week' => $this->translateDay($day),
+                        'start_time' => $validated['start_time'] ?? '09:00',
+                        'end_time' => $validated['end_time'] ?? '17:00',
+                        'slot_duration' => 30,
+                        'buffer_time' => 0,
+                        'max_patients_per_slot' => 1,
+                        'is_active' => true,
+                        'allow_online_booking' => true,
+                        'advance_booking_days' => 30,
+                        'min_booking_hours' => 24,
+                        'effective_from' => now()->toDateString(),
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            // Log de l'action
+            Log::info('Médecin ajouté au cabinet avec succès (nouvel utilisateur créé)', [
+                'cabinet_id' => $cabinetId,
+                'doctor_id' => $doctor->id,
+                'user_id' => $doctorUser->id,
+                'staff_id' => $staff->id,
+                'owner_id' => $user->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Médecin ajouté au cabinet avec succès (nouvel utilisateur créé)',
+                'data' => [
+                    'user' => [
+                        'id' => $doctorUser->id,
+                        'email' => $doctorUser->email,
+                        'name' => $doctorUser->name,
+                        'role' => $doctorUser->role
+                    ],
+                    'doctor' => [
+                        'id' => $doctor->id,
+                        'user_id' => $doctor->user_id,
+                        'speciality_id' => $doctor->speciality_id,
+                        'cabinet_id' => $doctor->cabinet_id,
+                        'name' => $doctor->name,
+                        'license_number' => $doctor->license_number,
+                        'bio' => $doctor->bio,
+                        'consultation_fees' => $doctor->consultation_fees,
+                        'start_time' => $doctor->start_time,
+                        'end_time' => $doctor->end_time,
+                        'available_days' => $doctor->available_days ,
+                        'is_active' => $doctor->is_active,
+                    ],
+                    'staff' => [
+                        'id' => $staff->id,
+                        'user_id' => $staff->user_id,
+                        'cabinet_id' => $staff->cabinet_id,
+                        'name' => $staff->name,
+                        'job_title' => $staff->job_title,
+                        'is_owner' => $staff->is_owner
+                    ],
+                    'owner_staff' => [
+                        'id' => $ownerStaff->id,
+                        'user_id' => $ownerStaff->user_id,
+                        'cabinet_id' => $ownerStaff->cabinet_id,
+                        'name' => $ownerStaff->name,
+                        'job_title' => $ownerStaff->job_title,
+                        'is_owner' => $ownerStaff->is_owner
+                    ]
+                ]
+            ], 201);
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur de validation',
+                'error' => $e->errors()
+            ], 422);
+        } catch (QueryException $e) {
+            DB::rollBack();
+            Log::error('Erreur de base de données lors de l\'ajout du médecin: ' . $e->getMessage(), [
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'ajout du médecin',
+                'error' => 'Erreur de base de données'
+            ], 500);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur inattendue dans addDoctorToCabinet: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur inattendue s\'est produite',
+                'error' => 'Erreur serveur'
+            ], 500);
+        }
     }
 
     /**
@@ -349,9 +365,9 @@ class StaffController extends Controller
             'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($staff->user->id)],
             'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
             'name' => ['sometimes', 'string', 'max:255'],
-             'profile_image'=>['nullable','string','max:255'],
+            'profile_image' => ['nullable', 'string', 'max:255'],
             // Staff fields
-            'cabinet_id' => ['sometimes', 'required', 'exists:cabinets,id'], // Changed to required
+            'cabinet_id' => ['sometimes', 'required', 'exists:cabinets,id'],
             'job_title' => ['sometimes', 'string', 'max:100'],
             'phone_number' => ['nullable', 'string', 'max:20'],
             'bio' => ['nullable', 'string'],
@@ -463,5 +479,22 @@ class StaffController extends Controller
             'data' => $staff,
             'message' => 'My staff profile retrieved successfully.',
         ], 200);
+    }
+
+    /**
+     * Translate French day to English for schedule compatibility
+     */
+    private function translateDay($frenchDay)
+    {
+        $daysMap = [
+            'lundi' => 'monday',
+            'mardi' => 'tuesday',
+            'mercredi' => 'wednesday',
+            'jeudi' => 'thursday',
+            'vendredi' => 'friday',
+            'samedi' => 'saturday',
+            'dimanche' => 'sunday',
+        ];
+        return $daysMap[$frenchDay] ?? $frenchDay;
     }
 }
