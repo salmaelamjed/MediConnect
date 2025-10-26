@@ -499,6 +499,12 @@ public function allCabinetsActive(): JsonResponse
  * @param int $id
  * @return JsonResponse
  */
+/**
+ * Récupérer les détails complets d'un cabinet par ID
+ *
+ * @param int $id
+ * @return JsonResponse
+ */
 public function show(int $id): JsonResponse
 {
     try {
@@ -551,8 +557,10 @@ public function show(int $id): JsonResponse
         ->leftJoin('users', 'cabinets.owner_id', '=', 'users.id')
         ->leftJoin('doctors', 'users.id', '=', 'doctors.user_id')
         ->with([
-            'specialities' => function ($query) {
-                $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
+            // Récupérer toutes les spécialités du cabinet (via tous les médecins)
+            'doctors.speciality' => function ($query) {
+                $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active')
+                      ->distinct(); // Éviter les doublons
             },
             'doctors' => function ($query) {
                 $query->select(
@@ -571,11 +579,7 @@ public function show(int $id): JsonResponse
                     'users.profile_image as doctor_profile_image'
                 )
                 ->leftJoin('users', 'doctors.user_id', '=', 'users.id')
-                ->with([
-                    'speciality' => function ($query) {
-                        $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
-                    }
-                ]);
+                ->where('doctors.is_active', true); // Seulement les médecins actifs
             }
         ])
         ->first();
@@ -587,6 +591,18 @@ public function show(int $id): JsonResponse
                 'message' => 'Cabinet non trouvé',
                 'error' => 'Ressource non trouvée'
             ], 404);
+        }
+
+        // Récupérer toutes les spécialités uniques du cabinet
+        $allSpecialities = collect();
+        if ($cabinet->doctors) {
+            foreach ($cabinet->doctors as $doctor) {
+                if ($doctor->speciality) {
+                    $allSpecialities->push($doctor->speciality);
+                }
+            }
+            // Supprimer les doublons basés sur l'ID de spécialité
+            $allSpecialities = $allSpecialities->unique('id')->values();
         }
 
         // Récupérer les cabinets à proximité (dans un rayon de 10km)
@@ -617,12 +633,13 @@ public function show(int $id): JsonResponse
         ->where('cabinets.id', '!=', $id) // Exclure le cabinet actuel
         ->whereNotNull('cabinets.latitude')
         ->whereNotNull('cabinets.longitude')
-        ->where('cabinets.is_active', true) // Explicitly qualify is_active
+        ->where('cabinets.is_active', true)
         ->leftJoin('users', 'cabinets.owner_id', '=', 'users.id')
         ->leftJoin('doctors', 'users.id', '=', 'doctors.user_id')
         ->with([
-            'specialities' => function ($query) {
-                $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
+            'doctors.speciality' => function ($query) {
+                $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active')
+                      ->distinct();
             },
             'doctors' => function ($query) {
                 $query->select(
@@ -641,16 +658,16 @@ public function show(int $id): JsonResponse
                     'users.profile_image as doctor_profile_image'
                 )
                 ->leftJoin('users', 'doctors.user_id', '=', 'users.id')
-                ->with([
-                    'speciality' => function ($query) {
-                        $query->select('specialities.id', 'specialities.name', 'specialities.description', 'specialities.icon', 'specialities.is_active');
-                    }
-                ]);
+                ->where('doctors.is_active', true);
             }
         ])
         ->get()
         ->filter(function ($clinic) use ($cabinet, $nearbyRadius) {
             // Calcul de la distance avec la formule Haversine
+            if (!$cabinet->latitude || !$cabinet->longitude || !$clinic->latitude || !$clinic->longitude) {
+                return false;
+            }
+
             $earthRadius = 6371; // Rayon de la Terre en km
             $latFrom = deg2rad($cabinet->latitude);
             $lonFrom = deg2rad($cabinet->longitude);
@@ -667,20 +684,19 @@ public function show(int $id): JsonResponse
             return $distance <= $nearbyRadius;
         })
         ->map(function ($clinic) {
-            // Transformer les specialities pour nearby clinics
-            $clinic->specialities = $clinic->specialities->map(function ($speciality) {
-                return [
-                    'id' => $speciality->id,
-                    'name' => $speciality->name,
-                    'description' => $speciality->description,
-                    'icon' => $speciality->icon,
-                    'is_active' => $speciality->is_active,
-                    'pivot' => $speciality->pivot
-                ];
-            })->toArray();
+            // Récupérer toutes les spécialités uniques pour ce cabinet
+            $clinicSpecialities = collect();
+            if ($clinic->doctors) {
+                foreach ($clinic->doctors as $doctor) {
+                    if ($doctor->speciality) {
+                        $clinicSpecialities->push($doctor->speciality);
+                    }
+                }
+                $clinicSpecialities = $clinicSpecialities->unique('id')->values();
+            }
 
             // Transformer les doctors pour nearby clinics
-            $clinic->doctors = $clinic->doctors->map(function ($doctor) {
+            $clinicDoctors = $clinic->doctors ? $clinic->doctors->map(function ($doctor) {
                 return [
                     'id' => $doctor->id,
                     'user_id' => $doctor->user_id,
@@ -703,7 +719,7 @@ public function show(int $id): JsonResponse
                         'is_active' => $doctor->speciality->is_active
                     ] : null
                 ];
-            })->toArray();
+            })->toArray() : [];
 
             return [
                 'id' => $clinic->id,
@@ -727,25 +743,13 @@ public function show(int $id): JsonResponse
                 'owner_name' => $clinic->owner_name,
                 'owner_email' => $clinic->owner_email,
                 'owner_profile_image' => $clinic->owner_profile_image,
-                'specialities' => $clinic->specialities,
-                'doctors' => $clinic->doctors
+                'specialities' => $clinicSpecialities->toArray(),
+                'doctors' => $clinicDoctors
             ];
         })->values()->toArray();
 
-        // Transformer les specialities du cabinet principal
-        $cabinet->specialities = $cabinet->specialities->map(function ($speciality) {
-            return [
-                'id' => $speciality->id,
-                'name' => $speciality->name,
-                'description' => $speciality->description,
-                'icon' => $speciality->icon,
-                'is_active' => $speciality->is_active,
-                'pivot' => $speciality->pivot
-            ];
-        })->toArray();
-
         // Transformer les doctors du cabinet principal
-        $cabinet->doctors = $cabinet->doctors->map(function ($doctor) {
+        $cabinetDoctors = $cabinet->doctors ? $cabinet->doctors->map(function ($doctor) {
             return [
                 'id' => $doctor->id,
                 'user_id' => $doctor->user_id,
@@ -768,7 +772,7 @@ public function show(int $id): JsonResponse
                     'is_active' => $doctor->speciality->is_active
                 ] : null
             ];
-        })->toArray();
+        })->toArray() : [];
 
         // Préparer les données de réponse
         $responseData = [
@@ -793,19 +797,17 @@ public function show(int $id): JsonResponse
             'owner_name' => $cabinet->owner_name,
             'owner_email' => $cabinet->owner_email,
             'owner_profile_image' => $cabinet->owner_profile_image,
-            'specialities' => $cabinet->specialities,
-            'doctors' => $cabinet->doctors,
+            'specialities' => $allSpecialities->toArray(), // Toutes les spécialités uniques
+            'doctors' => $cabinetDoctors,
             'nearby_clinics' => $nearbyClinics
         ];
 
         // Log pour débogage
         Log::info('Cabinet details retrieved', [
             'cabinet_id' => $id,
-            'detail_images' => $cabinet->detail_images,
-            'doctors' => $cabinet->doctors,
-            'specialities' => $cabinet->specialities,
-            'owner_profile_image' => $cabinet->owner_profile_image,
-            'nearby_clinics' => $nearbyClinics
+            'specialities_count' => $allSpecialities->count(),
+            'doctors_count' => count($cabinetDoctors),
+            'nearby_clinics_count' => count($nearbyClinics)
         ]);
 
         return response()->json([

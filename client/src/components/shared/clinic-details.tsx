@@ -280,7 +280,7 @@ const ClinicDetails = () => {
           <div className="mb-12">
             <h3 className="mb-4 text-xl font-bold text-gray-900">Specialities</h3>
             {selectedCabinet.specialities?.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 lg:grid-cols-12">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-8">
                 {selectedCabinet.specialities.map((speciality, index) => (
                   <div
                     key={index}
@@ -426,7 +426,7 @@ const ClinicDetails = () => {
           <div className="mb-12">
             <h6 className="mb-6 text-xl font-bold text-gray-900">Clinics nearby</h6>
             {selectedCabinet.nearby_clinics?.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-5">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {selectedCabinet.nearby_clinics.map((clinic: Clinic, index: number) => (
                   <div
                     key={index}
