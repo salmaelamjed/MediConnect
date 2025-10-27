@@ -246,7 +246,7 @@ const ClinicDetails = () => {
                 className="object-cover w-full transition-transform duration-500 cursor-pointer h-96 hover:scale-105"
                 onClick={() => setIsSliderOpen(true)}
               />
-              <div className="absolute inset-0 transition-opacity bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100"></div>
+              <div className="absolute inset-0 transition-opacity opacity-0 bg-gradient-to-t from-black/20 to-transparent hover:opacity-100"></div>
             </div>
             <div className="grid grid-cols-2 grid-rows-2 gap-4">
               {selectedCabinet.detail_images?.slice(0, 4).map((image, index) => (
@@ -301,9 +301,9 @@ const ClinicDetails = () => {
                 {selectedCabinet.specialities.map((speciality, index) => (
                   <div
                     key={index}
-                    className="flex flex-col items-center gap-3 p-5  border cursor-pointer  rounded-2xl border-border bg-card hover:shadow-sm hover:border-primary/50 "
+                    className="flex flex-col items-center gap-3 p-5 border cursor-pointer rounded-2xl border-border bg-card hover:shadow-sm hover:border-primary/50 "
                   >
-                    <div className="flex items-center justify-center w-16 h-16  rounded-2xl bg-primary/10 ">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 ">
                       <MedicalIcon name={speciality.icon} className="text-primary" size={28} />
                     </div>
                     <span className="font-semibold text-center transition-colors text-foreground group-hover:text-primary">
@@ -325,10 +325,10 @@ const ClinicDetails = () => {
                 {selectedCabinet.doctors.map((doctor, index) => (
                   <div
                     key={index}
-                    className="relative overflow-hidden bg-gradient-to-br from-white to-primary/5 border border-border shadow-md group rounded-3xl hover:shadow-xl hover:border-primary/30 "
+                    className="relative overflow-hidden border shadow-md bg-gradient-to-br from-white to-primary/5 border-border group rounded-3xl hover:shadow-xl hover:border-primary/30 "
                     style={{ boxShadow: "var(--shadow-doctor)" }}
                   >
-                    <div className="absolute top-0 right-0 w-32 h-32 transition-transform duration-500 rounded-full opacity-10 bg-gradient-to-br from-primary to-accent -mr-16 -mt-16 group-hover:scale-150"></div>
+                    <div className="absolute top-0 right-0 w-32 h-32 -mt-16 -mr-16 transition-transform duration-500 rounded-full opacity-10 bg-gradient-to-br from-primary to-accent group-hover:scale-150"></div>
                     
                     <div className="relative p-6">
                       <div className="flex items-start gap-4 mb-5">
@@ -408,7 +408,7 @@ const ClinicDetails = () => {
 
                       <Button
                         onClick={() => handleBookDoctor(doctor)}
-                        className="w-full h-12 text-base font-semibold transition-all duration-300 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl shadow-lg hover:shadow-xl hover:scale-105"
+                        className="w-full h-12 text-base font-semibold transition-all duration-300 shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl hover:shadow-xl hover:scale-105"
                       >
                         Book Appointment
                       </Button>
@@ -429,7 +429,7 @@ const ClinicDetails = () => {
           <div className="mb-16">
             <SectionTitle >Location</SectionTitle>             
             {isValidLatLng ? (
-              <div className="overflow-hidden  rounded-3xl">
+              <div className="overflow-hidden rounded-3xl">
                 <div
                   ref={mapRef}
                   className="w-full h-[400px]"
@@ -449,7 +449,7 @@ const ClinicDetails = () => {
                 {selectedCabinet.nearby_clinics.map((clinic: Clinic, index: number) => (
                   <div
                     key={index}
-                    className="overflow-hidden  shadow-md group rounded-3xl border-border hover:shadow-sm hover:border-primary/30 2"
+                    className="overflow-hidden shadow-md group rounded-3xl border-border hover:shadow-sm hover:border-primary/30 2"
                   >
                     <div className="relative h-56 overflow-hidden">
                       <img
@@ -465,11 +465,21 @@ const ClinicDetails = () => {
                       </div>
                     </div>
                     <div className="p-6">
+                     
+                     <div className="flex justify-between gap-2">
                       <h4 className="mb-3 text-xl font-bold transition-colors text-foreground line-clamp-1 group-hover:text-primary">
                         {clinic.name}
                       </h4>
+                      <div className="flex items-center gap-3 ">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10">
+                          <Navigation size={14} className="text-green-400" />
+                          <span className="text-sm font-semibold text-green-400">~1.2 km</span>
+                        </div>
+                      </div>
+                      </div> 
+                     
                       <div className="flex items-start gap-2 mb-4">
-                        <MapPin size={16} className="mt-1 text-muted-foreground flex-shrink-0" />
+                        <MapPin size={16} className="flex-shrink-0 mt-1 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground line-clamp-2">
                           {clinic.address}, {clinic.city}
                         </span>
@@ -493,12 +503,7 @@ const ClinicDetails = () => {
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center gap-3 pb-5 mb-5 border-b border-border">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10">
-                          <Navigation size={14} className="text-accent" />
-                          <span className="text-sm font-semibold text-accent">~1.2 km</span>
-                        </div>
-                      </div>
+                      
                       <Button
                         onClick={() => handleViewClinic(clinic.id)}
                         className="w-full h-12 font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl "
@@ -597,7 +602,7 @@ const ClinicDetails = () => {
                   </h3>
                   {slotsLoading === "pending" ? (
                     <div className="flex items-center justify-center py-8">
-                      <div className="w-8 h-8 mr-3 border-4 border-muted rounded-full border-t-primary animate-spin" />
+                      <div className="w-8 h-8 mr-3 border-4 rounded-full border-muted border-t-primary animate-spin" />
                       <span className="text-muted-foreground">Loading...</span>
                     </div>
                   ) : slotsError ? (
@@ -616,14 +621,14 @@ const ClinicDetails = () => {
                               relative px-4 py-3 text-sm font-semibold rounded-xl border-2 transition-all duration-300
                               ${
                                 isSelected
-                                  ? "bg-primary border-primary text-primary-foreground shadow-lg scale-105"
-                                  : "bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent hover:scale-105"
+                                  ? "  text-green-400 shadow-lg scale-105"
+                                  : " border-blue-500 text-blue-500 hover:bg-accent/20 hover:border-accent hover:scale-105"
                               }
                             `}
                           >
                             {slot}
                             {isSelected && (
-                              <CheckCircle2 className="absolute w-4 h-4 -top-1 -right-1" />
+                              <CheckCircle2 className="absolute w-4 h-4 text-green-400 -top-1 -right-1" />
                             )}
                           </button>
                         );
@@ -663,7 +668,7 @@ const ClinicDetails = () => {
                 <Button
                   disabled={!selectedDate || !selectedSlot || !firstName || !lastName}
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full h-14 text-base font-semibold transition-all duration-300 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full text-base font-semibold transition-all duration-300 h-14 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirm Booking
                 </Button>
@@ -706,7 +711,7 @@ const ClinicDetails = () => {
                   <div className="col-span-2 pt-4 mt-4 border-t border-border">
                     <div className="flex items-center justify-between">
                       <span className="text-base font-medium text-muted-foreground">Consultation Fee</span>
-                      <span className="text-2xl font-bold text-accent">{selectedDoctor?.consultation_fees} MAD</span>
+                      <span className="text-2xl font-bold text-black">{selectedDoctor?.consultation_fees} MAD</span>
                     </div>
                   </div>
                 </div>
@@ -720,7 +725,7 @@ const ClinicDetails = () => {
                   </Button>
                   <Button
                     onClick={handleConfirmBooking}
-                    className="flex-1 h-12 font-semibold transition-all duration-300 bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 rounded-xl hover:scale-105"
+                    className="flex-1 h-12 font-semibold transition-all duration-300 bg-primary hover:from-accent/90 hover:to-accent/70 rounded-xl hover:scale-105"
                   >
                     Confirm
                     <CheckCircle2 className="w-5 h-5 ml-2" />

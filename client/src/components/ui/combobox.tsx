@@ -87,7 +87,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
               aria-label="Select specialty"
               aria-controls="specialty-combobox"
               className={cn(
-                "w-full justify-between",
+                " justify-between w-full",
                 !value && "text-muted-foreground",
                 error && "border-red-500 focus:ring-red-500",
                 className

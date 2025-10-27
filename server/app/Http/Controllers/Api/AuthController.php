@@ -319,7 +319,7 @@ class AuthController extends Controller
                 'working_days' => $request->cabinet_working_days,
                 'latitude' => $geocodeData['lat'] ?? null,
                 'longitude' => $geocodeData['lon'] ?? null,
-                'is_active' => true,
+                'is_active' => false,
             ]);
 
             $cabinetId = $cabinet->id;

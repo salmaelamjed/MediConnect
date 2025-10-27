@@ -12,12 +12,9 @@ use App\Http\Controllers\Api\CabinetSearchController;
 use App\Http\Controllers\Api\ReservationController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\StaffController;
+use App\Http\Controllers\Api\UserController; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -29,7 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 
-// Groupe de routes pour la réinitialisation de mot de passe
+// Password reset routes
 Route::prefix('password-reset')->group(function () {
     Route::post('/send-code', [PasswordResetController::class, 'sendResetPassword'])
         ->name('password.reset.send');
@@ -39,109 +36,69 @@ Route::prefix('password-reset')->group(function () {
         ->name('password.reset.change');
     Route::post('/resend-code', [PasswordResetController::class, 'resendPasswordCode']);
 });
-//route for specialities
-Route::get('/specialities',[SpecialityController::class, 'allSpecialities']);
+
+// Specialities routes
+Route::get('/specialities', [SpecialityController::class, 'allSpecialities']);
 Route::get('/specialities/active', [SpecialityController::class, 'allSpecialitiesActive']);
 
-
-//route for cabinets
+// Cabinet routes
 Route::get('/cabinets/active', [CabinetController::class, 'allCabinetsActive'])->name('cabinets.active');
 Route::get('/cabinets', [CabinetController::class, 'allCabinets'])->name('cabinets.all');
 Route::get('/cabinets/name/{name}', [CabinetController::class, 'getCabinetByName'])->name('cabinets.byName');
 Route::get('/cabinets/address/{address}', [CabinetController::class, 'getCabinetByAdress'])->name('cabinets.byAddress');
 
-// search routes
+// Search routes
 Route::get('/search', [SearchController::class, 'search']);
 Route::prefix('search')->group(function () {
-    Route::get('/cabinets', action: [CabinetSearchController::class, 'search']);
+    Route::get('/cabinets', [CabinetSearchController::class, 'search']);
     Route::get('/cabinets/location', [CabinetSearchController::class, 'searchByLocation']);
     Route::get('/cabinets/advanced', [CabinetSearchController::class, 'advancedSearch']);
     Route::get('/cities', [CabinetSearchController::class, 'getCities']);
 });
-// Routes supplémentaires pour les filtres
+
+// Additional filter routes
 Route::get('/cabinets/open-now', [CabinetSearchController::class, 'getOpenNow']);
 Route::get('/cabinets/available', [CabinetSearchController::class, 'getAvailable']);
 Route::get('/cabinets/nearest', [CabinetSearchController::class, 'getNearest']);
-// Route to get detailed information about a specific cabinet by ID
 Route::get('/cabinets/{id}', [CabinetController::class, 'show']);
 
-
+// Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/users', [UserController::class, 'index']); // Get all users (admin only)
+    Route::get('/user', [UserController::class, 'show']); // Get authenticated user details
+    Route::put('/user', [UserController::class, 'update']); // Update authenticated user
+    Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Update user role (admin only)
+    Route::delete('/users/{id}', [UserController::class, 'destroy']); // Delete user (admin only)
 
-    // List all reservations (accessible by patients, doctors, admins)
-    // GET /api/reservations
-    Route::get('/reservations', [ReservationController::class, 'index'])
-        ->name('reservations.index');
-
-    // Create a new reservation (patients only)
-    // POST /api/reservations
-    Route::post('/reservations', [ReservationController::class, 'store'])
-        ->name('reservations.store');
-
-    // View a specific reservation (patients, doctors, admins)
-    // GET /api/reservations/{id}
-    Route::get('/reservations/{id}', [ReservationController::class, 'show'])
-        ->name('reservations.show');
-
-    // Confirm a reservation (doctors only)
-    // POST /api/reservations/{id}/confirm
-    Route::post('/reservations/{id}/confirm', [ReservationController::class, 'confirm'])
-        ->name('reservations.confirm');
-
-    // Cancel a reservation (patients, doctors, admins)
-    // POST /api/reservations/{id}/cancel
-    Route::post('/reservations/{id}/cancel', [ReservationController::class, 'cancel'])
-        ->name('reservations.cancel');
-
-    // Mark a reservation as completed (doctors only)
-    // POST /api/reservations/{id}/complete
-    Route::post('/reservations/{id}/complete', [ReservationController::class, 'complete'])
-        ->name('reservations.complete');
-
-    // Reschedule a reservation (patients, doctors, admins)
-    // PUT /api/reservations/{id}/reschedule
-    Route::put('/reservations/{id}/reschedule', [ReservationController::class, 'reschedule'])
-        ->name('reservations.reschedule');
-
-    // Send a reminder for a reservation (doctors, admins)
-    // POST /api/reservations/{id}/reminder
-    Route::post('/reservations/{id}/reminder', [ReservationController::class, 'sendReminder'])
-        ->name('reservations.reminder');
-
-    // Get reservation statistics (doctors, admins)
-    // GET /api/reservations/stats
-    Route::get('/reservations/stats', [ReservationController::class, 'getStats'])
-        ->name('reservations.stats');
-
-    // Get available slots for a doctor (accessible by authenticated users)
-    // GET /api/doctors/{doctorId}/available-slots
-    Route::get('/doctors/{doctorId}/available-slots', [ReservationController::class, 'getAvailableSlots'])
-        ->name('reservations.available-slots');
+    // Reservation routes
+    Route::get('/reservations', [ReservationController::class, 'index'])->name('reservations.index');
+    Route::post('/reservations', [ReservationController::class, 'store'])->name('reservations.store');
+    Route::get('/reservations/{id}', [ReservationController::class, 'show'])->name('reservations.show');
+    Route::post('/reservations/{id}/confirm', [ReservationController::class, 'confirm'])->name('reservations.confirm');
+    Route::post('/reservations/{id}/cancel', [ReservationController::class, 'cancel'])->name('reservations.cancel');
+    Route::post('/reservations/{id}/complete', [ReservationController::class, 'complete'])->name('reservations.complete');
+    Route::put('/reservations/{id}/reschedule', [ReservationController::class, 'reschedule'])->name('reservations.reschedule');
+    Route::post('/reservations/{id}/reminder', [ReservationController::class, 'sendReminder'])->name('reservations.reminder');
+    Route::get('/reservations/stats', [ReservationController::class, 'getStats'])->name('reservations.stats');
+    Route::get('/doctors/{doctorId}/available-slots', [ReservationController::class, 'getAvailableSlots'])->name('reservations.available-slots');
     Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
 
-    // Get all notifications for the authenticated user
+    // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-
-    // Get unread notifications count
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
-
-    // Mark a specific notification as read
     Route::put('/notifications/{notificationId}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
-
-    // Mark all notifications as read
     Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
 
-    //patients routes
+    // Patient routes
     Route::apiResource('patients', PatientController::class);
-    Route::get('patients-by-doctor',[PatientController::class,'patientsByDoctor']);
-    // RESTful resource routes for staff (index, store, show, update, destroy)
+    Route::get('patients-by-doctor', [PatientController::class, 'patientsByDoctor']);
+
+    // Staff routes
     Route::apiResource('staff', StaffController::class)->except(['store']);
-    // Custom route for storing a staff member with cabinetId
     Route::post('/cabinets/{cabinetId}/staff', [StaffController::class, 'store'])->name('staff.store');
-    // Custom endpoint for authenticated user's staff profile
     Route::get('staff/me', [StaffController::class, 'me']);
 
-    //Schedules routes
-Route::get('/schedules',[PlanningController::class,'getDoctorPlanning']);
-Route::get('/debug-planning',[PlanningController::class, 'debugPlanning']);
+    // Schedule routes
+    Route::get('/schedules', [PlanningController::class, 'getDoctorPlanning']);
+    Route::get('/debug-planning', [PlanningController::class, 'debugPlanning']);
 });

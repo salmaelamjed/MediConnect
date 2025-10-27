@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "danielsanmedium.dscodegpt"
+        "danielsanmedium.dscodegpt",
+        "formulahendry.auto-close-tag",
+        "codeflow-studio.claude-code-extension"
     ]
 }
