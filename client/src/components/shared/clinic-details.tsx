@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useEffect, useState, useRef } from "react";
-import { MapPin, X, Clock, DollarSign, Calendar, Navigation, CheckCircle2, User, Star } from "lucide-react";
+import { MapPin, X, Clock, Calendar, Navigation, CheckCircle2, User, Star, Award } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -67,6 +67,19 @@ interface Clinic {
   latitude?: string;
   longitude?: string;
 }
+
+const SectionTitle = ({  children }: {  children: React.ReactNode }) => (
+  <div className="flex flex-col items-center mb-8">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-accent/10">
+      </div>
+      <h2 className="text-3xl font-bold text-foreground">{children}</h2>
+      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-accent/10">
+      </div>
+    </div>
+    <div className="w-24 h-1 rounded-full bg-gradient-to-r from-transparent via-primary to-transparent"></div>
+  </div>
+);
 
 const ClinicDetails = () => {
   const dispatch = useAppDispatch();
@@ -195,58 +208,62 @@ const ClinicDetails = () => {
 
   if (loading === "pending") {
     return (
-      <div className="flex items-center justify-center w-full min-h-screen bg-gray-50">
-        <Loader className="text-black" />
+      <div className="flex items-center justify-center w-full min-h-screen bg-background">
+        <Loader className="text-primary" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center w-full min-h-screen bg-gray-50">
-        <p className="text-red-600">Error: {error}</p>
+      <div className="flex items-center justify-center w-full min-h-screen bg-background">
+        <p className="text-destructive">Error: {error}</p>
       </div>
     );
   }
 
   if (!selectedCabinet) {
     return (
-      <div className="flex items-center justify-center w-full min-h-screen bg-gray-50">
-        <p className="text-gray-600">No cabinet found</p>
+      <div className="flex items-center justify-center w-full min-h-screen bg-background">
+        <p className="text-muted-foreground">No cabinet found</p>
       </div>
     );
   }
 
+  // Fonction pour convertir le temps en format local
+
+
   return (
-    <div className="w-full min-h-screen">
-      <div className="w-full px-2 py-4 mx-auto">
+    <div className="w-full min-h-screen ">
+      <div className="w-full px-4 py-8 mx-auto ">
         {/* Image Gallery Section */}
-        <div className="mb-6">
+        <div className="mb-8">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 h-96">
-            <div className="relative">
+            <div className="relative overflow-hidden rounded-2xl">
               <img
                 src={selectedCabinet.image || "/placeholder.svg"}
                 alt={selectedCabinet.name}
-                className="object-cover w-full rounded-lg cursor-pointer h-96"
+                className="object-cover w-full transition-transform duration-500 cursor-pointer h-96 hover:scale-105"
                 onClick={() => setIsSliderOpen(true)}
               />
+              <div className="absolute inset-0 transition-opacity bg-gradient-to-t from-black/20 to-transparent opacity-0 hover:opacity-100"></div>
             </div>
             <div className="grid grid-cols-2 grid-rows-2 gap-4">
               {selectedCabinet.detail_images?.slice(0, 4).map((image, index) => (
-                <div key={index} className="relative">
+                <div key={index} className="relative overflow-hidden rounded-xl">
                   <img
                     src={image || "/placeholder.svg"}
                     alt={`${selectedCabinet.name} view ${index + 1}`}
-                    className="object-cover w-full rounded-lg cursor-pointer h-44"
+                    className="object-cover w-full transition-transform duration-500 cursor-pointer h-44 hover:scale-105"
                     onClick={() => setIsSliderOpen(true)}
                   />
                   {index === 3 && selectedCabinet.detail_images && selectedCabinet.detail_images.length > 4 && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/50 h-44">
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/60 backdrop-blur-sm h-44">
                       <button
-                        className="font-medium text-white transition-colors hover:text-gray-200"
+                        className="px-6 py-3 font-semibold text-white transition-all duration-300 border-2 border-white rounded-full hover:bg-white hover:text-primary"
                         onClick={() => setIsSliderOpen(true)}
                       >
-                        Show All
+                        +{selectedCabinet.detail_images.length - 4} More
                       </button>
                     </div>
                   )}
@@ -257,247 +274,247 @@ const ClinicDetails = () => {
         </div>
 
         {/* Property Information */}
-        <div className="p-6 bg-white rounded-lg shadow-sm">
-          <div className="flex-col justify-between mb-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex-1">
-              <h1 className="mb-2 text-3xl font-bold text-gray-900">{selectedCabinet.name}</h1>
-              <div className="flex items-center gap-2 mb-4">
-                <MapPin className="text-gray-500" size={16} />
-                <span className="text-gray-600">
-                  {selectedCabinet.address}, {selectedCabinet.city}, {selectedCabinet.postal_code}
-                </span>
+        <div className="p-8">
+          <div className="mb-8">
+            <h1 className="mb-4 text-4xl font-bold text-foreground">{selectedCabinet.name}</h1>
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                <MapPin className="w-4 h-4 text-primary" />
               </div>
+              <span className="text-lg">
+                {selectedCabinet.address}, {selectedCabinet.city}, {selectedCabinet.postal_code}
+              </span>
             </div>
           </div>
 
-          <div className="mb-6">
-            <p className="leading-relaxed text-gray-700">
+          <div className="pb-8 mb-12 border-b border-border">
+            <p className="text-lg leading-relaxed text-muted-foreground">
               {selectedCabinet.description || "No description available."}
             </p>
           </div>
 
           {/* Specialities Section */}
-          <div className="mb-12">
-            <h3 className="mb-4 text-xl font-bold text-gray-900">Specialities</h3>
+          <div className="mb-16">
+            <SectionTitle >Our Specialities</SectionTitle>
             {selectedCabinet.specialities?.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-8">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
                 {selectedCabinet.specialities.map((speciality, index) => (
                   <div
                     key={index}
-                    className="flex flex-col items-center justify-center gap-2 p-3 transition-all duration-200 border border-blue-300 rounded-lg hover:shadow-sm group"
+                    className="flex flex-col items-center gap-3 p-5  border cursor-pointer  rounded-2xl border-border bg-card hover:shadow-sm hover:border-primary/50 "
                   >
-                    <div className="flex items-center justify-center w-10 h-10 transition-colors rounded-lg bg-blue-50 group-hover:bg-blue-100">
-                      <MedicalIcon name={speciality.icon} className="text-blue-500" size={20} />
+                    <div className="flex items-center justify-center w-16 h-16  rounded-2xl bg-primary/10 ">
+                      <MedicalIcon name={speciality.icon} className="text-primary" size={28} />
                     </div>
-                    <span className="font-medium text-center text-gray-700 group-hover:text-blue-600">
+                    <span className="font-semibold text-center transition-colors text-foreground group-hover:text-primary">
                       {speciality.name}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600">No specialities available.</p>
+              <p className="text-center text-muted-foreground">No specialities available.</p>
             )}
           </div>
 
           {/* Doctors Section */}
-          <div className="mb-12">
-            <h6 className="mb-4 text-xl font-bold text-gray-900">Our Doctors</h6>
+          <div className="mb-16">
+            <SectionTitle >Meet Our Doctors</SectionTitle>
             {selectedCabinet.doctors?.length > 0 ? (
-              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {selectedCabinet.doctors.map((doctor, index) => (
                   <div
                     key={index}
-                    className="p-6 transition-all duration-300 bg-white border border-gray-200 shadow-sm group rounded-xl hover:shadow-lg hover:border-green-200"
+                    className="relative overflow-hidden bg-gradient-to-br from-white to-primary/5 border border-border shadow-md group rounded-3xl hover:shadow-xl hover:border-primary/30 "
+                    style={{ boxShadow: "var(--shadow-doctor)" }}
                   >
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="relative">
-                        <img
-                          src={doctor.profile_image || doctor.doctor_profile_image || "/placeholder-doctor.jpg"}
-                          alt={doctor.name}
-                          className="object-cover w-16 h-16 border-2 border-green-200 rounded-full"
-                        />
-                        {doctor.is_active && (
-                          <div className="absolute w-4 h-4 bg-green-500 border-2 border-white rounded-full -bottom-1 -right-1"></div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-semibold text-gray-900 truncate">{doctor.name}</h4>
-                        {doctor.speciality && (
-                          <p className="text-sm text-gray-600 truncate">{doctor.speciality.name}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="mb-4 text-sm leading-relaxed text-gray-600 line-clamp-3">
-                      {doctor.bio || "No bio available."}
-                    </p>
-
-                    <div className="mb-6 space-y-3">
-                      {doctor.consultation_fees && (
-                        <div className="flex items-center gap-2">
-                          <DollarSign size={16} className="text-blue-600" />
-                          <span className="text-sm font-medium text-gray-700">
-                            Consultation: {doctor.consultation_fees} MAD
-                          </span>
+                    <div className="absolute top-0 right-0 w-32 h-32 transition-transform duration-500 rounded-full opacity-10 bg-gradient-to-br from-primary to-accent -mr-16 -mt-16 group-hover:scale-150"></div>
+                    
+                    <div className="relative p-6">
+                      <div className="flex items-start gap-4 mb-5">
+                        <div className="relative flex-shrink-0">
+                          <div className="w-20 h-20 overflow-hidden border-4 rounded-2xl border-primary/20">
+                            <img
+                              src={doctor.profile_image || doctor.doctor_profile_image || "/placeholder-doctor.jpg"}
+                              alt={doctor.name}
+                              className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+                            />
+                          </div>
+                          {doctor.is_active && (
+                            <div className="absolute flex items-center justify-center w-4 h-4 bg-green-400 border-2 border-white rounded-full shadow-lg -bottom-1 -right-1">
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {(doctor.start_time || doctor.end_time) && (
-                        <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-blue-600" />
-                          <span className="text-sm text-gray-600">
-                            From <span className="font-bold">{doctor.start_time || "N/A"}</span> To{" "}
-                            <span className="font-bold">{doctor.end_time || "N/A"}</span>
-                          </span>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="mb-1 text-xl font-bold text-foreground">{doctor.name}</h4>
+                          {doctor.speciality && (
+                            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10">
+                              <Award size={14} className="text-primary" />
+                              <span className="text-sm font-medium text-primary">{doctor.speciality.name}</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {doctor.available_days != null && (
-                        <div className="flex items-start gap-2">
-                          <Calendar size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-600">
-                            Available: {(() => {
-                              console.log("Doctor:", doctor.name, "available_days:", doctor.available_days, "type:", typeof doctor.available_days);
-                              try {
-                                if (Array.isArray(doctor.available_days) && doctor.available_days.length > 0) {
-                                  return doctor.available_days.join(", ");
-                                } else if (typeof doctor.available_days === "string") {
-                                  const parsedDays = JSON.parse(doctor.available_days);
-                                  return Array.isArray(parsedDays) && parsedDays.length > 0 ? parsedDays.join(", ") : "Not specified";
+                      </div>
+
+                      <p className="mb-3 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+                        {doctor.bio || "Experienced healthcare professional dedicated to patient care."}
+                      </p>
+
+                      <div className="p-4 mb-5 space-y-3 border rounded-2xl bg-background/50 border-border/50">
+                        {doctor.consultation_fees && (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              
+                              <span className="text-sm font-medium text-muted-foreground">Consultation</span>
+                            </div>
+                            <span className="text-lg font-bold text-black">{doctor.consultation_fees} MAD</span>
+                          </div>
+                        )}
+                        {(doctor.start_time || doctor.end_time) && (
+  <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+    <Clock size={16} className="text-primary" />
+    <span className="text-sm text-muted-foreground">
+      <span className="font-semibold text-foreground">
+        {doctor.start_time  }
+      </span>{" "}
+      à{" "}
+      <span className="font-semibold text-foreground">
+        {doctor.end_time }
+      </span>
+    </span>
+  </div>
+)}
+                        {doctor.available_days != null && (
+                          <div className="flex items-start gap-2 pt-2 border-t border-border/50">
+                            <Calendar size={16} className="text-primary mt-0.5 flex-shrink-0" />
+                            <span className="text-xs text-muted-foreground">
+                              {(() => {
+                                try {
+                                  if (Array.isArray(doctor.available_days) && doctor.available_days.length > 0) {
+                                    return doctor.available_days.join(", ");
+                                  } else if (typeof doctor.available_days === "string") {
+                                    const parsedDays = JSON.parse(doctor.available_days);
+                                    return Array.isArray(parsedDays) && parsedDays.length > 0 ? parsedDays.join(", ") : "Available";
+                                  }
+                                  return "Available";
+                                } catch (e) {
+                                  return "Available";
                                 }
-                                return "Not specified";
-                              } catch (e) {
-                                console.error("Error parsing available_days for", doctor.name, ":", e);
-                                return "Not specified";
-                              }
-                            })()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                              })()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
 
-                    <Button
-                      onClick={() => handleBookDoctor(doctor)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors duration-200"
-                    >
-                      Book Appointment
-                    </Button>
+                      <Button
+                        onClick={() => handleBookDoctor(doctor)}
+                        className="w-full h-12 text-base font-semibold transition-all duration-300 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl shadow-lg hover:shadow-xl hover:scale-105"
+                      >
+                        Book Appointment
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-12 text-center">
-                <User className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium text-gray-500">No doctors available at this time.</p>
-                <p className="mt-2 text-sm text-gray-400">Please check back later for updates.</p>
+              <div className="py-16 text-center rounded-3xl bg-muted/30">
+                <User className="w-20 h-20 mx-auto mb-4 text-muted-foreground/30" />
+                <p className="text-lg font-medium text-muted-foreground">No doctors available at this time.</p>
+                <p className="mt-2 text-sm text-muted-foreground/70">Please check back later for updates.</p>
               </div>
             )}
           </div>
 
           {/* Location Section */}
-          <div className="mb-12">
-            <div className="flex items-center justify-between mb-4">
-              <h6 className="text-xl font-bold text-gray-900">Where you'll be</h6>
-              {isValidLatLng && (
-                <a
-                  href={`https://www.openstreetmap.org/directions?to=${selectedCabinet.latitude},${selectedCabinet.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
-                >
-                  <Navigation size={16} />
-                  Get Directions
-                </a>
-              )}
-            </div>
+          <div className="mb-16">
+            <SectionTitle >Location</SectionTitle>             
             {isValidLatLng ? (
-              <div className="overflow-hidden border border-gray-200 rounded-lg shadow-sm">
+              <div className="overflow-hidden  rounded-3xl">
                 <div
                   ref={mapRef}
-                  className="w-full h-[300px] rounded-lg"
+                  className="w-full h-[400px]"
                   title={`Map showing location of ${selectedCabinet.name}`}
                 ></div>
               </div>
             ) : (
-              <p className="text-gray-600">Location data not available.</p>
+              <p className="text-center text-muted-foreground">Location data not available.</p>
             )}
           </div>
 
           {/* Nearby Clinics Section */}
-          <div className="mb-12">
-            <h6 className="mb-6 text-xl font-bold text-gray-900">Clinics nearby</h6>
+          <div className="mb-8">
+            <SectionTitle >Nearby Clinics</SectionTitle>
             {selectedCabinet.nearby_clinics?.length > 0 ? (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {selectedCabinet.nearby_clinics.map((clinic: Clinic, index: number) => (
                   <div
                     key={index}
-                    className="overflow-hidden transition-all duration-300 bg-white border border-gray-200 shadow-sm rounded-xl hover:shadow-lg hover:border-blue-300 group"
+                    className="overflow-hidden  shadow-md group rounded-3xl border-border hover:shadow-sm hover:border-primary/30 2"
                   >
-                    <div className="relative h-48 overflow-hidden">
+                    <div className="relative h-56 overflow-hidden">
                       <img
                         src={clinic.image || "/placeholder-clinic.jpg"}
                         alt={clinic.name}
-                        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                        className="object-cover w-full h-full "
                       />
+                      <div className="absolute inset-0 transition-opacity bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-70 group-hover:opacity-90"></div>
+                      <div className="absolute flex items-center gap-2 px-4 py-2 shadow-lg bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl">
+                        <Star size={16} className="text-yellow-500 fill-current" />
+                        <span className="font-bold text-foreground">4.8</span>
+                        <span className="text-sm text-muted-foreground">(120+)</span>
+                      </div>
                     </div>
-                    <div className="p-5">
-                      <div className="mb-4">
-                        <h4 className="mb-2 text-lg font-semibold text-gray-900 line-clamp-1 group-hover:text-blue-700">
-                          {clinic.name}
-                        </h4>
-                        <div className="flex items-center gap-1 mb-2">
-                          <MapPin size={14} className="text-gray-500" />
-                          <span className="text-sm text-gray-600 line-clamp-1">
-                            {clinic.address}, {clinic.city}
-                          </span>
-                        </div>
+                    <div className="p-6">
+                      <h4 className="mb-3 text-xl font-bold transition-colors text-foreground line-clamp-1 group-hover:text-primary">
+                        {clinic.name}
+                      </h4>
+                      <div className="flex items-start gap-2 mb-4">
+                        <MapPin size={16} className="mt-1 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground line-clamp-2">
+                          {clinic.address}, {clinic.city}
+                        </span>
                       </div>
                       {clinic.specialities && clinic.specialities.length > 0 && (
-                        <div className="mb-4">
-                          <div className="flex flex-wrap gap-1">
+                        <div className="mb-5">
+                          <div className="flex flex-wrap gap-2">
                             {clinic.specialities.slice(0, 3).map((spec, specIndex) => (
                               <span
                                 key={specIndex}
-                                className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-full"
+                                className="px-3 py-1.5 text-xs font-semibold rounded-full bg-primary/10 text-primary"
                               >
                                 {spec.name}
                               </span>
                             ))}
                             {clinic.specialities.length > 3 && (
-                              <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                              <span className="px-3 py-1.5 text-xs font-semibold rounded-full bg-muted text-muted-foreground">
                                 +{clinic.specialities.length - 3}
                               </span>
                             )}
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 text-sm text-green-600">
-                          <Navigation size={14} />
-                          <span>~1.2 km</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Star size={14} className="text-yellow-500 fill-current" />
-                          <span className="text-sm font-medium text-gray-700">4.8</span>
+                      <div className="flex items-center gap-3 pb-5 mb-5 border-b border-border">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10">
+                          <Navigation size={14} className="text-accent" />
+                          <span className="text-sm font-semibold text-accent">~1.2 km</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleViewClinic(clinic.id)}
-                          className="flex-1 py-2 font-medium text-white transition-colors duration-200 bg-blue-600 rounded-lg hover:bg-blue-700"
-                        >
-                          Voir la clinique
-                        </Button>
-                      </div>
+                      <Button
+                        onClick={() => handleViewClinic(clinic.id)}
+                        className="w-full h-12 font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl "
+                      >
+                        View Clinic
+                      </Button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-12 text-center bg-gray-50 rounded-xl">
-                <MapPin className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium text-gray-500">Aucune clinique à proximité</p>
-                <p className="mt-2 text-sm text-gray-400">
-                  Il n'y a pas d'autres cliniques dans les environs immédiats.
+              <div className="py-16 text-center rounded-3xl bg-muted/30">
+                <MapPin className="w-20 h-20 mx-auto mb-4 text-muted-foreground/30" />
+                <p className="text-lg font-medium text-muted-foreground">No nearby clinics</p>
+                <p className="mt-2 text-sm text-muted-foreground/70">
+                  There are no other clinics in the immediate vicinity.
                 </p>
               </div>
             )}
@@ -506,16 +523,16 @@ const ClinicDetails = () => {
           {/* Full-Screen Slider */}
           {isSliderOpen && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-sm"
               onClick={handleBackgroundClick}
             >
-              <div className="relative w-full h-full max-w-4xl">
+              <div className="relative w-full h-full max-w-6xl">
                 <button
-                  className="absolute top-4 right-4 z-[60] bg-white/20 backdrop-blur-sm rounded-full p-2 text-white hover:bg-white/30 transition-all duration-200 hover:scale-110"
+                  className="absolute top-6 right-6 z-[10000] bg-white/10 backdrop-blur-md rounded-2xl p-3 text-white hover:bg-white/20 transition-all duration-300 hover:scale-110 hover:rotate-90"
                   onClick={closeSlider}
                   aria-label="Close gallery"
                 >
-                  <X size={24} />
+                  <X size={28} />
                 </button>
                 <Carousel className="w-full h-full">
                   <CarouselContent>
@@ -524,7 +541,7 @@ const ClinicDetails = () => {
                         <img
                           src={selectedCabinet.image || "/placeholder.svg"}
                           alt={`${selectedCabinet.name} main view`}
-                          className="object-cover w-full h-full max-h-[100vh] rounded-2xl"
+                          className="object-contain w-full h-full max-h-[90vh] rounded-3xl shadow-2xl"
                         />
                       </div>
                     </CarouselItem>
@@ -534,32 +551,32 @@ const ClinicDetails = () => {
                           <img
                             src={image || "/placeholder.svg"}
                             alt={`${selectedCabinet.name} gallery ${index + 1}`}
-                            className="object-cover w-full h-full max-h-[100vh] rounded-2xl"
+                            className="object-contain w-full h-full max-h-[90vh] rounded-3xl shadow-2xl"
                           />
                         </div>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  <CarouselPrevious className="absolute left-4 z-[55] bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30" />
-                  <CarouselNext className="absolute right-4 z-[55] bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30" />
+                  <CarouselPrevious className="absolute left-6 z-[9999] bg-white/10 backdrop-blur-md text-white border-white/20 hover:bg-white/20 w-14 h-14 rounded-2xl" />
+                  <CarouselNext className="absolute right-6 z-[9999] bg-white/10 backdrop-blur-md text-white border-white/20 hover:bg-white/20 w-14 h-14 rounded-2xl" />
                 </Carousel>
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[55] bg-black/50 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
+                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-[9999] bg-black/60 backdrop-blur-md text-white px-6 py-3 rounded-2xl text-base font-medium">
                   {(selectedCabinet.detail_images?.length || 0) + 1} images
                 </div>
               </div>
             </div>
           )}
 
-          {/* Booking Sheet */}
+          {/* Booking Sheet - Fixed z-index */}
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetContent className="overflow-y-auto max-h-[100vh] p-4">
+            <SheetContent className="overflow-y-auto max-h-[100vh] p-6 z-[10000]">
               <SheetHeader>
-                <SheetTitle>Book Appointment with {selectedDoctor?.name}</SheetTitle>
+                <SheetTitle className="text-2xl font-bold">Book with {selectedDoctor?.name}</SheetTitle>
               </SheetHeader>
-              <div className="mt-4">
+              <div className="mt-6">
                 <ShadcnCalendar
                   mode="single"
-                  className="w-full max-w-xl bg-white border rounded-lg shadow-sm"
+                  className="w-full max-w-xl p-4 bg-white border shadow-sm rounded-2xl"
                   selected={selectedDate ?? undefined}
                   onSelect={(date) => setSelectedDate(date ?? null)}
                   disabled={(date) =>
@@ -573,22 +590,22 @@ const ClinicDetails = () => {
                 />
               </div>
               {selectedDate && (
-                <div className="mt-4">
-                  <h3 className="flex items-center gap-2 mb-2 text-lg font-semibold">
+                <div className="mt-6">
+                  <h3 className="flex items-center gap-2 mb-4 text-lg font-semibold">
                     <Clock className="w-5 h-5 text-primary" />
                     Available Times
                   </h3>
                   {slotsLoading === "pending" ? (
                     <div className="flex items-center justify-center py-8">
-                      <div className="w-6 h-6 mr-3 border-2 border-gray-300 rounded-full border-t-primary animate-spin" />
-                      <span className="text-gray-600">Loading available times...</span>
+                      <div className="w-8 h-8 mr-3 border-4 border-muted rounded-full border-t-primary animate-spin" />
+                      <span className="text-muted-foreground">Loading...</span>
                     </div>
                   ) : slotsError ? (
-                    <div className="p-4 text-center border border-red-200 rounded-lg bg-red-50">
-                      <p className="text-sm text-red-600">{slotsError}</p>
+                    <div className="p-4 text-center border rounded-2xl border-destructive/20 bg-destructive/10">
+                      <p className="text-sm text-destructive">{slotsError}</p>
                     </div>
                   ) : availableSlots.length > 0 ? (
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
                       {availableSlots.map((slot) => {
                         const isSelected = selectedSlot === slot;
                         return (
@@ -596,107 +613,117 @@ const ClinicDetails = () => {
                             key={slot}
                             onClick={() => setSelectedSlot(slot)}
                             className={`
-                              relative px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200
+                              relative px-4 py-3 text-sm font-semibold rounded-xl border-2 transition-all duration-300
                               ${
                                 isSelected
-                                  ? "bg-blue-100 border-blue-300 text-blue-800 shadow-sm"
-                                  : "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 hover:border-green-300 cursor-pointer"
+                                  ? "bg-primary border-primary text-primary-foreground shadow-lg scale-105"
+                                  : "bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent hover:scale-105"
                               }
-                              ${!isSelected ? "hover:shadow-sm" : ""}
                             `}
-                            title={
-                              isSelected
-                                ? "Currently selected time"
-                                : "Click to select this time slot"
-                            }
                           >
-                            <span className="block">{slot}</span>
+                            {slot}
                             {isSelected && (
-                              <div className="absolute w-3 h-3 bg-blue-500 border-2 border-white rounded-full -top-1 -right-1"></div>
+                              <CheckCircle2 className="absolute w-4 h-4 -top-1 -right-1" />
                             )}
                           </button>
                         );
                       })}
                     </div>
                   ) : (
-                    <div className="p-6 text-center border border-yellow-200 rounded-lg bg-yellow-50">
-                      <Clock className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
-                      <p className="mb-1 text-sm font-medium text-yellow-800">No Available Slots</p>
-                      <p className="text-xs text-yellow-700">
-                        Please try selecting a different date or check back later.
-                      </p>
-                      <p className="mt-2 text-xs text-gray-600">
-                        Doctor's working hours: {selectedDoctor?.start_time} - {selectedDoctor?.end_time}
-                      </p>
+                    <div className="p-6 text-center border rounded-2xl border-border bg-muted/30">
+                      <Clock className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                      <p className="mb-2 font-medium text-muted-foreground">No slots available</p>
+                      <p className="text-xs text-muted-foreground/70">Try another date</p>
                     </div>
                   )}
                 </div>
               )}
-              <div className="mt-4 space-y-4">
+              <div className="mt-6 space-y-4">
                 <Input
                   placeholder="First Name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="h-12 border-gray-300 focus:border-primary focus:ring-primary"
+                  className="h-12 rounded-xl"
                   required
                 />
                 <Input
                   placeholder="Last Name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="h-12 border-gray-300 focus:border-primary focus:ring-primary"
+                  className="h-12 rounded-xl"
                   required
                 />
                 <Textarea
                   placeholder="Reason for appointment (optional)"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="border-gray-300 focus:border-primary focus:ring-primary"
+                  className="rounded-xl"
+                  rows={4}
                 />
                 <Button
                   disabled={!selectedDate || !selectedSlot || !firstName || !lastName}
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="w-full h-14 text-base font-semibold transition-all duration-300 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirm
+                  Confirm Booking
                 </Button>
               </div>
             </SheetContent>
           </Sheet>
 
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[480px] rounded-3xl">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-blue-800">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Reservation Summary
+                <DialogTitle className="flex items-center gap-3 text-2xl font-bold text-primary">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  Confirm Reservation
                 </DialogTitle>
               </DialogHeader>
-              <div className="p-4 space-y-3 border rounded-lg bg-gray-50">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-gray-600">Doctor:</span>
-                  <span className="font-medium">{selectedDoctor?.name}</span>
-                  <span className="text-gray-600">Date:</span>
-                  <span className="font-medium">{selectedDate ? format(selectedDate, "PPP", { locale: fr }) : "N/A"}</span>
-                  <span className="text-gray-600">Time:</span>
-                  <span className="font-medium">{selectedSlot || "N/A"}</span>
-                  <span className="text-gray-600">Patient:</span>
-                  <span className="font-medium">{firstName} {lastName}</span>
-                  <span className="text-gray-600">Reason:</span>
-                  <span className="font-medium">{reason || "Not specified"}</span>
-                  <span className="text-gray-600">Price:</span>
-                  <span className="font-semibold text-green-600">{selectedDoctor?.consultation_fees} MAD</span>
+              <div className="p-6 space-y-4 border shadow-sm rounded-2xl bg-gradient-to-br from-background to-primary/5">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="block mb-1 text-xs font-medium text-muted-foreground">Doctor</span>
+                    <span className="font-semibold text-foreground">{selectedDoctor?.name}</span>
+                  </div>
+                  <div>
+                    <span className="block mb-1 text-xs font-medium text-muted-foreground">Date</span>
+                    <span className="font-semibold text-foreground">{selectedDate ? format(selectedDate, "PPP", { locale: fr }) : "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="block mb-1 text-xs font-medium text-muted-foreground">Time</span>
+                    <span className="font-semibold text-foreground">{selectedSlot || "N/A"}</span>
+                  </div>
+                  <div>
+                    <span className="block mb-1 text-xs font-medium text-muted-foreground">Patient</span>
+                    <span className="font-semibold text-foreground">{firstName} {lastName}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="block mb-1 text-xs font-medium text-muted-foreground">Reason</span>
+                    <span className="font-semibold text-foreground">{reason || "Not specified"}</span>
+                  </div>
+                  <div className="col-span-2 pt-4 mt-4 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-medium text-muted-foreground">Consultation Fee</span>
+                      <span className="text-2xl font-bold text-accent">{selectedDoctor?.consultation_fees} MAD</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-end gap-4">
-                  <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                <div className="flex gap-3 pt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 h-12 font-semibold rounded-xl"
+                  >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleConfirmBooking}
-                    className="text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    className="flex-1 h-12 font-semibold transition-all duration-300 bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 rounded-xl hover:scale-105"
                   >
-                    Confirm Reservation
-                    <CheckCircle2 className="w-4 h-4 ml-2" />
+                    Confirm
+                    <CheckCircle2 className="w-5 h-5 ml-2" />
                   </Button>
                 </div>
               </div>
